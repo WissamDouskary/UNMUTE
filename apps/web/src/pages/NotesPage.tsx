@@ -61,6 +61,12 @@ export function NotesPage() {
   const [newTagText, setNewTagText] = useState<string>('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  // --- Multi-Select Batch State (WhatsApp / Linear style) ---
+  const [isSelectionModeActive, setIsSelectionModeActive] = useState<boolean>(false);
+  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
+  const [batchDeleteConfirm, setBatchDeleteConfirm] = useState<boolean>(false);
+  const isSelectionMode = isSelectionModeActive || selectedNoteIds.size > 0;
+
   // --- Synchronization & Save Timers / Refs ---
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentNoteIdRef = useRef<string | null>(null);
@@ -538,6 +544,211 @@ export function NotesPage() {
     deleteMutation.mutate(noteId);
   };
 
+  // --- Batch Mutations (Multi-Select / WhatsApp Style) ---
+  const batchPinMutation = useMutation({
+    mutationFn: async ({ ids, targetPinState }: { ids: string[]; targetPinState: boolean }) => {
+      // Toggle only notes that don't already match the desired state
+      const toToggle = ids.filter((id) => {
+        const n = notes.find((note) => note.id === id);
+        return n ? n.isPinned !== targetPinState : true;
+      });
+      await Promise.all(toToggle.map((id) => apiClient.togglePinNote(id)));
+      return { ids, targetPinState };
+    },
+    onMutate: async ({ ids, targetPinState }: { ids: string[]; targetPinState: boolean }) => {
+      await queryClient.cancelQueries({ queryKey: ['notes'] });
+      const previousNotes = queryClient.getQueryData<Note[]>(notesQueryKey);
+
+      const idSet = new Set(ids);
+      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
+        if (!old) return [];
+        if (activeTab === 'pinned' && !targetPinState) {
+          // If we unpinned notes while in pinned tab, filter them out!
+          return old.filter((n) => !idSet.has(n.id));
+        }
+        const updatedList = old.map((n) =>
+          idSet.has(n.id) ? { ...n, isPinned: targetPinState } : n
+        );
+        return [...updatedList].sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return 0;
+        });
+      });
+
+      setSelectedNoteIds(new Set());
+      setIsSelectionModeActive(false);
+      return { previousNotes };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(notesQueryKey, context.previousNotes);
+      }
+    },
+    onSuccess: ({ ids, targetPinState }) => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      setAiNotification({
+        message: targetPinState
+          ? `Pinned ${ids.length} ${ids.length === 1 ? 'note' : 'notes'} to top`
+          : `Unpinned ${ids.length} ${ids.length === 1 ? 'note' : 'notes'}`,
+        type: 'success',
+      });
+      setTimeout(() => setAiNotification(null), 3000);
+    },
+  });
+
+  const batchArchiveMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => apiClient.toggleArchiveNote(id)));
+      return ids;
+    },
+    onMutate: async (ids: string[]) => {
+      await queryClient.cancelQueries({ queryKey: ['notes'] });
+      const previousNotes = queryClient.getQueryData<Note[]>(notesQueryKey);
+
+      const idSet = new Set(ids);
+      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
+        if (!old) return [];
+        return old.filter((n) => !idSet.has(n.id));
+      });
+
+      if (selectedNoteId && idSet.has(selectedNoteId)) {
+        const remaining = (previousNotes || []).filter((n) => !idSet.has(n.id));
+        setSelectedNoteId(remaining[0]?.id || null);
+      }
+
+      setSelectedNoteIds(new Set());
+      setIsSelectionModeActive(false);
+      return { previousNotes };
+    },
+    onError: (_err, _ids, context) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(notesQueryKey, context.previousNotes);
+      }
+    },
+    onSuccess: (ids) => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      setAiNotification({
+        message:
+          activeTab === 'archived'
+            ? `Restored ${ids.length} ${ids.length === 1 ? 'note' : 'notes'} from archive`
+            : `Archived ${ids.length} ${ids.length === 1 ? 'note' : 'notes'}`,
+        type: 'success',
+      });
+      setTimeout(() => setAiNotification(null), 3000);
+    },
+  });
+
+  const batchDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => apiClient.deleteNote(id)));
+      return ids;
+    },
+    onMutate: async (ids: string[]) => {
+      await queryClient.cancelQueries({ queryKey: ['notes'] });
+      const previousNotes = queryClient.getQueryData<Note[]>(notesQueryKey);
+
+      const idSet = new Set(ids);
+      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
+        if (!old) return [];
+        return old.filter((n) => !idSet.has(n.id));
+      });
+
+      if (selectedNoteId && idSet.has(selectedNoteId)) {
+        const remaining = (previousNotes || []).filter((n) => !idSet.has(n.id));
+        setSelectedNoteId(remaining[0]?.id || null);
+      }
+
+      setSelectedNoteIds(new Set());
+      setIsSelectionModeActive(false);
+      setBatchDeleteConfirm(false);
+      return { previousNotes };
+    },
+    onError: (_err, _ids, context) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(notesQueryKey, context.previousNotes);
+      }
+    },
+    onSuccess: (ids) => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      setAiNotification({
+        message: `Permanently deleted ${ids.length} ${ids.length === 1 ? 'note' : 'notes'}`,
+        type: 'success',
+      });
+      setTimeout(() => setAiNotification(null), 3000);
+    },
+  });
+
+  // Multi-select helper functions
+  const toggleNoteSelection = (noteId: string) => {
+    setSelectedNoteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(noteId)) {
+        next.delete(noteId);
+      } else {
+        next.add(noteId);
+      }
+      return next;
+    });
+    setIsSelectionModeActive(true);
+  };
+
+  const selectAllNotes = () => {
+    if (selectedNoteIds.size === notes.length) {
+      setSelectedNoteIds(new Set());
+    } else {
+      setSelectedNoteIds(new Set(notes.map((n) => n.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedNoteIds(new Set());
+    setIsSelectionModeActive(false);
+  };
+
+  const allSelectedPinned = useMemo(() => {
+    if (selectedNoteIds.size === 0) return false;
+    const selectedNotes = notes.filter((n) => selectedNoteIds.has(n.id));
+    return selectedNotes.length > 0 && selectedNotes.every((n) => n.isPinned);
+  }, [notes, selectedNoteIds]);
+
+  const handleBatchPin = () => {
+    if (selectedNoteIds.size === 0) return;
+    flushPendingSave();
+    const targetPinState = !allSelectedPinned;
+    batchPinMutation.mutate({ ids: Array.from(selectedNoteIds), targetPinState });
+  };
+
+  const handleBatchArchive = () => {
+    if (selectedNoteIds.size === 0) return;
+    flushPendingSave();
+    batchArchiveMutation.mutate(Array.from(selectedNoteIds));
+  };
+
+  const handleConfirmBatchDelete = () => {
+    if (selectedNoteIds.size === 0) return;
+    flushPendingSave();
+    batchDeleteMutation.mutate(Array.from(selectedNoteIds));
+  };
+
+  // Keyboard shortcut (Escape to clear multi-select) & tab-switch cleanup
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isSelectionMode) {
+        clearSelection();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSelectionMode]);
+
+  useEffect(() => {
+    setSelectedNoteIds(new Set());
+    setIsSelectionModeActive(false);
+  }, [activeTab, selectedTag]);
+
   // --- Tag Mutations ---
   const updateTagsMutation = useMutation({
     mutationFn: ({ noteId, nextTags }: { noteId: string; nextTags: string[] }) => {
@@ -790,22 +1001,45 @@ export function NotesPage() {
       {/* =========================================================================
           MASTER COLUMN: Notes List, Filters & Search (w-80 or w-96 with border-r)
       ========================================================================== */}
-      <div className="w-80 md:w-88 lg:w-96 border-r border-zinc-800/80 flex flex-col flex-shrink-0 bg-zinc-950">
-        {/* Header with New Note Button */}
+      <div className="w-80 md:w-88 lg:w-96 border-r border-zinc-800/80 flex flex-col flex-shrink-0 bg-zinc-950 relative">
+        {/* Header with New Note Button & Multi-Select Toggle */}
         <div className="p-4 border-b border-zinc-800/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold text-zinc-100">All Notes</h1>
+            <h1 className="text-base font-bold text-zinc-100">
+              {activeTab === 'archived' ? 'Archive' : activeTab === 'pinned' ? 'Pinned Notes' : 'All Notes'}
+            </h1>
             <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono">
               {notes.length}
             </span>
           </div>
-          <button
-            onClick={handleCreateNote}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-violet-600/20 active:scale-95 transition-all cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Note</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {notes.length > 0 && (
+              <button
+                onClick={() => {
+                  if (isSelectionMode) {
+                    clearSelection();
+                  } else {
+                    setIsSelectionModeActive(true);
+                  }
+                }}
+                title={isSelectionMode ? 'Cancel selection' : 'Select multiple notes'}
+                className={`p-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                  isSelectionMode
+                    ? 'bg-violet-600/20 border-violet-500/50 text-violet-300 shadow-sm shadow-violet-950/30'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850'
+                }`}
+              >
+                <CheckSquare className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={handleCreateNote}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-violet-600/20 active:scale-95 transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Note</span>
+            </button>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -896,7 +1130,7 @@ export function NotesPage() {
         )}
 
         {/* Notes Scrollable Cards */}
-        <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
+        <div className={`flex-1 overflow-y-auto p-2.5 space-y-1.5 ${isSelectionMode ? 'pb-24' : ''}`}>
           {loading ? (
             <div className="py-16 flex flex-col items-center justify-center text-zinc-500 text-xs gap-2">
               <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
@@ -923,97 +1157,216 @@ export function NotesPage() {
           ) : (
             notes.map((note) => {
               const isSelected = note.id === selectedNoteId;
+              const isCardChecked = selectedNoteIds.has(note.id);
+
               return (
                 <div
                   key={note.id}
-                  onClick={() => setSelectedNoteId(note.id)}
+                  onClick={() => {
+                    if (isSelectionMode) {
+                      toggleNoteSelection(note.id);
+                    } else {
+                      setSelectedNoteId(note.id);
+                    }
+                  }}
                   className={`group relative p-3 rounded-xl cursor-pointer transition-all ${
-                    isSelected
+                    isCardChecked
+                      ? 'bg-violet-950/30 border border-violet-500/60 shadow-md shadow-violet-950/30'
+                      : isSelected && !isSelectionMode
                       ? 'bg-zinc-900 border border-violet-500/50 shadow-md shadow-violet-950/20'
                       : 'hover:bg-zinc-900/60 border border-zinc-900/80'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h3
-                      className={`text-sm truncate flex-1 ${
-                        isSelected ? 'text-zinc-100 font-semibold' : 'text-zinc-300 font-medium'
-                      }`}
-                    >
-                      {note.title || 'Untitled Note'}
-                    </h3>
-                    {note.isPinned && (
-                      <Pin className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />
-                    )}
-                  </div>
-
-                  <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed mb-2.5">
-                    {getExcerpt(note.content)}
-                  </p>
-
-                  <div className="flex items-center justify-between text-[11px] text-zinc-500">
-                    <span className="flex items-center gap-1 font-mono text-[10px]">
-                      <Clock className="w-3 h-3 text-zinc-600" />
-                      {formatTime(note.updatedAt || note.createdAt)}
-                    </span>
-
-                    {/* Tag Pills */}
-                    {note.tags && note.tags.length > 0 && (
-                      <div className="flex items-center gap-1 overflow-hidden">
-                        {note.tags.slice(0, 2).map((t) => (
-                          <span
-                            key={t}
-                            className="px-1.5 py-0.5 rounded bg-zinc-800/80 text-violet-300 text-[10px]"
-                          >
-                            #{t}
-                          </span>
-                        ))}
-                        {note.tags.length > 2 && (
-                          <span className="text-[10px] text-zinc-500">
-                            +{note.tags.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Hover Quick Actions */}
-                  <div className="absolute right-2 top-2 hidden group-hover:flex items-center gap-1 bg-zinc-900/95 backdrop-blur-md px-1.5 py-1 rounded-lg border border-zinc-800 shadow-lg">
-                    <button
-                      onClick={(e) => handleTogglePin(e, note.id)}
-                      title={note.isPinned ? 'Unpin' : 'Pin to top'}
-                      className={`p-1 rounded hover:bg-zinc-800 cursor-pointer ${
-                        note.isPinned ? 'text-amber-400' : 'text-zinc-400 hover:text-zinc-200'
-                      }`}
-                    >
-                      {note.isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
-                    </button>
-                    <button
-                      onClick={(e) => handleToggleArchive(e, note.id)}
-                      title={note.isArchived ? 'Restore' : 'Archive'}
-                      className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 cursor-pointer"
-                    >
-                      {note.isArchived ? (
-                        <ArchiveRestore className="w-3.5 h-3.5" />
-                      ) : (
-                        <Archive className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                    <button
+                  <div className="flex items-start gap-2.5">
+                    {/* WhatsApp-Style Selection Checkbox */}
+                    <div
                       onClick={(e) => {
                         e.stopPropagation();
-                        setDeleteConfirmId(note.id);
+                        toggleNoteSelection(note.id);
                       }}
-                      title="Delete note"
-                      className="p-1 rounded hover:bg-red-500/20 text-zinc-400 hover:text-red-400 cursor-pointer"
+                      className={`mt-0.5 cursor-pointer flex-shrink-0 transition-all ${
+                        isSelectionMode
+                          ? 'opacity-100 scale-100'
+                          : 'opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100'
+                      }`}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      {isCardChecked ? (
+                        <div className="w-4 h-4 rounded-md bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-sm shadow-violet-600/40 border border-violet-500">
+                          <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+                        </div>
+                      ) : (
+                        <div className="w-4 h-4 rounded-md bg-zinc-900 border border-zinc-700/80 hover:border-violet-500/70 hover:bg-violet-500/10 transition-all flex items-center justify-center">
+                          <Check className="w-2.5 h-2.5 text-transparent hover:text-violet-400/40 transition-colors stroke-[2.5]" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h3
+                          className={`text-sm truncate flex-1 ${
+                            isSelected || isCardChecked ? 'text-zinc-100 font-semibold' : 'text-zinc-300 font-medium'
+                          }`}
+                        >
+                          {note.title || 'Untitled Note'}
+                        </h3>
+                        {note.isPinned && (
+                          <Pin className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />
+                        )}
+                      </div>
+
+                      <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed mb-2.5">
+                        {getExcerpt(note.content)}
+                      </p>
+
+                      <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                        <span className="flex items-center gap-1 font-mono text-[10px]">
+                          <Clock className="w-3 h-3 text-zinc-600" />
+                          {formatTime(note.updatedAt || note.createdAt)}
+                        </span>
+
+                        {/* Tag Pills */}
+                        {note.tags && note.tags.length > 0 && (
+                          <div className="flex items-center gap-1 overflow-hidden">
+                            {note.tags.slice(0, 2).map((t) => (
+                              <span
+                                key={t}
+                                className="px-1.5 py-0.5 rounded bg-zinc-800/80 text-violet-300 text-[10px]"
+                              >
+                                #{t}
+                              </span>
+                            ))}
+                            {note.tags.length > 2 && (
+                              <span className="text-[10px] text-zinc-500">
+                                +{note.tags.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Hover Quick Actions (Only when not in multi-selection mode) */}
+                  {!isSelectionMode && (
+                    <div className="absolute right-2 top-2 hidden group-hover:flex items-center gap-1 bg-zinc-900/95 backdrop-blur-md px-1.5 py-1 rounded-lg border border-zinc-800 shadow-lg z-10">
+                      <button
+                        onClick={(e) => handleTogglePin(e, note.id)}
+                        title={note.isPinned ? 'Unpin' : 'Pin to top'}
+                        className={`p-1 rounded hover:bg-zinc-800 cursor-pointer ${
+                          note.isPinned ? 'text-amber-400' : 'text-zinc-400 hover:text-zinc-200'
+                        }`}
+                      >
+                        {note.isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={(e) => handleToggleArchive(e, note.id)}
+                        title={note.isArchived ? 'Restore' : 'Archive'}
+                        className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 cursor-pointer"
+                      >
+                        {note.isArchived ? (
+                          <ArchiveRestore className="w-3.5 h-3.5" />
+                        ) : (
+                          <Archive className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(note.id);
+                        }}
+                        title="Delete note"
+                        className="p-1 rounded hover:bg-red-500/20 text-zinc-400 hover:text-red-400 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })
           )}
         </div>
+
+        {/* WhatsApp / Linear-style Floating Batch Action Bar */}
+        {selectedNoteIds.size > 0 && (
+          <div className="absolute bottom-3 left-3 right-3 z-30 bg-zinc-900/95 backdrop-blur-xl border border-violet-500/40 rounded-2xl p-2.5 shadow-2xl shadow-violet-950/40 flex items-center justify-between gap-2 animate-in slide-in-from-bottom-3 fade-in duration-200">
+            {/* Left: Select all checkbox + count */}
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                onClick={selectAllNotes}
+                title={selectedNoteIds.size === notes.length ? 'Deselect all' : 'Select all'}
+                className="cursor-pointer flex-shrink-0"
+              >
+                {selectedNoteIds.size === notes.length ? (
+                  <div className="w-4 h-4 rounded-md bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white border border-violet-500 shadow-sm shadow-violet-600/40">
+                    <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+                  </div>
+                ) : (
+                  <div className="w-4 h-4 rounded-md bg-zinc-850 border border-zinc-700 hover:border-violet-500 flex items-center justify-center text-violet-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                  </div>
+                )}
+              </button>
+
+              <span className="text-xs font-semibold text-zinc-100 truncate">
+                {selectedNoteIds.size} selected
+              </span>
+            </div>
+
+            {/* Right: Batch Action Buttons */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Batch Pin / Unpin */}
+              <button
+                onClick={handleBatchPin}
+                disabled={batchPinMutation.isPending}
+                title={allSelectedPinned ? 'Unpin selected' : 'Pin selected to top'}
+                className={`p-1.5 rounded-lg border text-xs transition-colors cursor-pointer disabled:opacity-50 ${
+                  allSelectedPinned
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+                    : 'border-zinc-800 hover:bg-zinc-800 text-zinc-300 hover:text-amber-400'
+                }`}
+              >
+                {allSelectedPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+              </button>
+
+              {/* Batch Archive / Restore */}
+              <button
+                onClick={handleBatchArchive}
+                disabled={batchArchiveMutation.isPending}
+                title={activeTab === 'archived' ? 'Restore selected notes' : 'Archive selected notes'}
+                className="p-1.5 rounded-lg border border-zinc-800 hover:bg-zinc-800 text-zinc-300 hover:text-violet-400 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {activeTab === 'archived' ? (
+                  <ArchiveRestore className="w-3.5 h-3.5" />
+                ) : (
+                  <Archive className="w-3.5 h-3.5" />
+                )}
+              </button>
+
+              {/* Batch Delete */}
+              <button
+                onClick={() => setBatchDeleteConfirm(true)}
+                disabled={batchDeleteMutation.isPending}
+                title="Delete selected notes"
+                className="p-1.5 rounded-lg border border-zinc-800 hover:border-red-500/40 hover:bg-red-500/10 text-zinc-300 hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+
+              <div className="w-px h-4 bg-zinc-800 mx-0.5" />
+
+              {/* Cancel Selection */}
+              <button
+                onClick={clearSelection}
+                title="Cancel selection"
+                className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* =========================================================================
@@ -1415,10 +1768,10 @@ export function NotesPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal (Single Note) */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl">
+          <div className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl animate-in zoom-in-95 duration-150">
             <h3 className="text-base font-bold text-zinc-100 mb-2">Delete this note?</h3>
             <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
               This action cannot be undone. All blocks, tables, and content associated with this note
@@ -1436,6 +1789,39 @@ export function NotesPage() {
                 className="px-3.5 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-xs font-semibold text-white transition-colors cursor-pointer"
               >
                 Delete Note
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Delete Confirmation Modal (Multi-Select) */}
+      {batchDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+            <h3 className="text-base font-bold text-zinc-100 mb-2">
+              Delete {selectedNoteIds.size} {selectedNoteIds.size === 1 ? 'note' : 'notes'}?
+            </h3>
+            <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
+              This action cannot be undone. All blocks, tables, and content associated with the selected
+              notes will be permanently removed.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setBatchDeleteConfirm(false)}
+                className="px-3.5 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmBatchDelete}
+                disabled={batchDeleteMutation.isPending}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {batchDeleteMutation.isPending && (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                )}
+                <span>Delete {selectedNoteIds.size} Notes</span>
               </button>
             </div>
           </div>
