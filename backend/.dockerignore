@@ -1,0 +1,13 @@
+target/
+.git
+.gitignore
+*.md
+.idea
+*.iml
+.vscode
+docker-compose*.yml
+.env*
+docs/
+apps/
+packages/
+node_modules/

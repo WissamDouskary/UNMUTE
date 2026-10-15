@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-native",
+    "lib": ["DOM", "ESNext"],
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@unmute/api-client": ["../../packages/api-client/src"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "declarations.d.ts", "app/**/*.ts", "app/**/*.tsx"]
+}

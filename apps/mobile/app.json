@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "UNMUTE",
+    "slug": "unmute",
+    "version": "0.1.0",
+    "scheme": "unmute",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#0f1117"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.unmute.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ]
+  }
+}

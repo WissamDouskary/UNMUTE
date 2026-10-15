@@ -1,0 +1,24 @@
+{
+  "name": "unmute",
+  "version": "0.1.0",
+  "private": true,
+  "description": "UNMUTE — AI-powered personal knowledge and action management platform",
+  "workspaces": [
+    "packages/api-client",
+    "apps/web",
+    "apps/mobile"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w apps/web",
+    "dev:mobile": "npm run start -w apps/mobile",
+    "build:web": "npm run build -w apps/web",
+    "build:api-client": "npm run build -w packages/api-client",
+    "lint": "npm run lint -w apps/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:ps": "docker compose ps"
+  }
+}
