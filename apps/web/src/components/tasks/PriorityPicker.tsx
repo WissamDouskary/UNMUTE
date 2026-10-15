@@ -44,8 +44,8 @@ export function PriorityPicker({
             iconOnly
               ? 'p-1 rounded-md hover:bg-zinc-800 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center'
               : cn(
-                  'inline-flex items-center gap-1.5 font-medium transition-all cursor-pointer border select-none',
-                  'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 border-zinc-800 hover:border-zinc-700',
+                  'inline-flex items-center gap-1.5 font-medium cursor-pointer select-none',
+                  'bg-zinc-900/50 hover:bg-zinc-800 hover:text-zinc-200 text-zinc-300 border border-zinc-800/50 transition-colors',
                   'focus:outline-none focus:ring-1 focus:ring-violet-500/50',
                   sizeClasses
                 ),

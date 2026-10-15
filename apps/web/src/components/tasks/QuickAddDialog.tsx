@@ -53,7 +53,7 @@ export function QuickAddDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm animate-in fade-in-0 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
-        <Dialog.Content className="fixed left-1/2 top-[25%] -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl shadow-black/90 p-5 outline-none animate-in fade-in-0 zoom-in-95 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
+        <Dialog.Content className="fixed left-1/2 top-[28%] -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xl bg-zinc-950 border border-zinc-800/80 rounded-xl shadow-[0_0_100px_40px_rgba(0,0,0,0.4)] p-5 outline-none animate-in fade-in-0 zoom-in-95 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
           {/* Header Bar */}
           <div className="flex items-center justify-between pb-3 mb-2 border-b border-zinc-800/60">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400">
