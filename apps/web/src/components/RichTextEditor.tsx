@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu, FloatingMenu } from '@tiptap/react/menus';
 import { StarterKit } from '@tiptap/starter-kit';
@@ -28,6 +28,8 @@ import {
   Minus,
   AlignLeft,
   AlignRight,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 
 const lowlight = createLowlight(common);
@@ -37,6 +39,9 @@ interface RichTextEditorProps {
   onChange: (html: string) => void;
   placeholder?: string;
   editable?: boolean;
+  onAiSummarize?: () => void;
+  onAiExtractTasks?: () => void;
+  isAiLoading?: boolean;
 }
 
 interface CommandItem {
@@ -126,6 +131,9 @@ export function RichTextEditor({
   onChange,
   placeholder = "Write something, or press '/' for commands...",
   editable = true,
+  onAiSummarize,
+  onAiExtractTasks,
+  isAiLoading = false,
 }: RichTextEditorProps) {
   // --- Slash Command State ---
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -250,9 +258,37 @@ export function RichTextEditor({
     [editor, slashMenuOpen, slashIndex]
   );
 
-  const filteredCommands = SLASH_COMMANDS.filter((cmd) =>
+  const slashCommands = useMemo<CommandItem[]>(() => {
+    const aiCommands: CommandItem[] = [];
+    if (onAiSummarize) {
+      aiCommands.push({
+        id: 'summarize',
+        title: 'Summarize with AI',
+        description: 'Generate executive summary & key takeaways',
+        icon: Sparkles,
+        action: () => {
+          onAiSummarize();
+        },
+      });
+    }
+    if (onAiExtractTasks) {
+      aiCommands.push({
+        id: 'extract-tasks',
+        title: 'Extract Action Items',
+        description: 'AI detects tasks and syncs with Tasks system',
+        icon: CheckSquare,
+        action: () => {
+          onAiExtractTasks();
+        },
+      });
+    }
+    return [...aiCommands, ...SLASH_COMMANDS];
+  }, [onAiSummarize, onAiExtractTasks]);
+
+  const filteredCommands = slashCommands.filter((cmd: CommandItem) =>
     cmd.title.toLowerCase().includes(slashQuery.toLowerCase()) ||
-    cmd.description.toLowerCase().includes(slashQuery.toLowerCase())
+    cmd.description.toLowerCase().includes(slashQuery.toLowerCase()) ||
+    cmd.id.toLowerCase().includes(slashQuery.toLowerCase())
   );
 
   // Link handler
@@ -525,7 +561,7 @@ export function RichTextEditor({
           </div>
 
           <div className="space-y-0.5">
-            {filteredCommands.map((cmd, idx) => {
+            {filteredCommands.map((cmd: CommandItem, idx: number) => {
               const Icon = cmd.icon;
               const isSelected = idx === slashIndex;
               return (
@@ -567,6 +603,14 @@ export function RichTextEditor({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* AI Processing Floating Indicator */}
+      {isAiLoading && (
+        <div className="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-violet-600/15 border border-violet-500/30 text-violet-300 text-xs shadow-lg shadow-purple-950/30 animate-pulse">
+          <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
+          <span className="font-semibold">AI Assistant is analyzing note content...</span>
         </div>
       )}
 

@@ -80,3 +80,76 @@ export interface NoteListParams {
   page?: number;
   size?: number;
 }
+
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+export interface Task {
+  id: string;
+  userId: string;
+  noteId?: string | null;
+  noteTitle?: string | null;
+  title: string;
+  description?: string | null;
+  isCompleted: boolean;
+  priority: TaskPriority;
+  dueDate?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTaskRequest {
+  title: string;
+  description?: string;
+  noteId?: string;
+  priority?: TaskPriority;
+  dueDate?: string;
+}
+
+export interface UpdateTaskRequest {
+  title?: string;
+  description?: string;
+  noteId?: string;
+  isCompleted?: boolean;
+  priority?: TaskPriority;
+  dueDate?: string;
+}
+
+export interface BatchCreateTasksRequest {
+  noteId?: string;
+  tasks: CreateTaskRequest[];
+}
+
+export interface TaskListParams {
+  completed?: boolean;
+  noteId?: string;
+  priority?: TaskPriority;
+}
+
+export interface SummarizeRequest {
+  content: string;
+  noteId?: string;
+}
+
+export interface SummarizeResponse {
+  summary: string;
+  keyPoints: string[];
+}
+
+export interface ExtractedTaskItem {
+  title: string;
+  description?: string;
+  priority: TaskPriority;
+  dueDate?: string;
+  savedTaskId?: string | null;
+}
+
+export interface ExtractTasksRequest {
+  content: string;
+  noteId?: string;
+  saveToTasks?: boolean;
+}
+
+export interface ExtractTasksResponse {
+  tasks: ExtractedTaskItem[];
+  count: number;
+}

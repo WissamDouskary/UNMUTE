@@ -140,6 +140,38 @@ body {
   width: 100%;
 }
 
+/* AI Summary Callout */
+.tiptap blockquote.ai-summary-callout {
+  border-left: 3px solid #8b5cf6 !important;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(99, 102, 241, 0.04) 100%);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.1);
+}
+.tiptap blockquote.ai-summary-callout strong {
+  color: #c4b5fd;
+  display: block;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+.tiptap blockquote.ai-summary-callout p {
+  color: #e4e4e7;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  margin: 0.25rem 0;
+}
+.tiptap blockquote.ai-summary-callout ul {
+  margin: 0.5rem 0 0.25rem 1.25rem;
+  padding: 0;
+  color: #a1a1aa;
+}
+.tiptap blockquote.ai-summary-callout li {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+}
+
 .tiptap table td,
 .tiptap table th {
   border: 1px solid #27272a; /* zinc-800 */

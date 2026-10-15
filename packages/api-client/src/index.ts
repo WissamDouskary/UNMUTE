@@ -14,6 +14,17 @@ export type {
   UpdateNoteRequest,
   PageResponse,
   NoteListParams,
+  TaskPriority,
+  Task,
+  CreateTaskRequest,
+  UpdateTaskRequest,
+  BatchCreateTasksRequest,
+  TaskListParams,
+  SummarizeRequest,
+  SummarizeResponse,
+  ExtractedTaskItem,
+  ExtractTasksRequest,
+  ExtractTasksResponse,
 } from './types';
 
 export default apiClient;

@@ -1,24 +1,10 @@
-# ---- Build stage ----
-FROM eclipse-temurin:21-jdk AS build
-
-WORKDIR /app
-
-# Copy Maven Wrapper and pom
-COPY mvnw mvnw.cmd ./
-COPY .mvn .mvn
-COPY pom.xml .
-
-# Copy source and package
-COPY src src
-RUN chmod +x mvnw && ./mvnw clean package -DskipTests -B
-
 # ---- Runtime stage ----
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-# Copy the built JAR
-COPY --from=build /app/target/*.jar app.jar
+# Copy the built JAR from target directory
+COPY target/unmute-backend-0.1.0-SNAPSHOT.jar app.jar
 
 # Non-root user for security
 RUN groupadd -r unmute && useradd -r -g unmute unmute

@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotesPage } from './pages/NotesPage';
+import { TasksPage } from './pages/TasksPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
 function App() {
@@ -25,16 +26,7 @@ function App() {
             <Route path="/" element={<AppShell />}>
               <Route index element={<DashboardPage />} />
               <Route path="notes" element={<NotesPage />} />
-              <Route
-                path="tasks"
-                element={
-                  <PlaceholderPage
-                    title="Actionable Task Engine"
-                    description="Automatically extract tasks, deadlines, and priorities from notes."
-                    phase="Phase 3"
-                  />
-                }
-              />
+              <Route path="tasks" element={<TasksPage />} />
               <Route
                 path="projects"
                 element={

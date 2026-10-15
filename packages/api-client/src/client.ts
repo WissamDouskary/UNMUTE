@@ -14,6 +14,15 @@ import type {
   UpdateNoteRequest,
   PageResponse,
   NoteListParams,
+  Task,
+  CreateTaskRequest,
+  UpdateTaskRequest,
+  BatchCreateTasksRequest,
+  TaskListParams,
+  SummarizeRequest,
+  SummarizeResponse,
+  ExtractTasksRequest,
+  ExtractTasksResponse,
 } from './types';
 
 // Ambient declaration for process in environments without @types/node
@@ -249,6 +258,62 @@ export class ApiClient {
 
   getNoteTags(): Promise<string[]> {
     return this.get<string[]>('/api/v1/notes/tags');
+  }
+
+  // --- Tasks Endpoints ---
+
+  getTasks(params: TaskListParams = {}): Promise<Task[]> {
+    const query = new URLSearchParams();
+    if (params.completed !== undefined) {
+      query.set('completed', String(params.completed));
+    }
+    if (params.noteId) {
+      query.set('noteId', params.noteId);
+    }
+    if (params.priority) {
+      query.set('priority', params.priority);
+    }
+    const queryString = query.toString();
+    const path = queryString ? `/api/v1/tasks?${queryString}` : '/api/v1/tasks';
+    return this.get<Task[]>(path);
+  }
+
+  getTask(id: string): Promise<Task> {
+    return this.get<Task>(`/api/v1/tasks/${id}`);
+  }
+
+  createTask(data: CreateTaskRequest): Promise<Task> {
+    return this.post<Task>('/api/v1/tasks', data);
+  }
+
+  createTasksBatch(data: BatchCreateTasksRequest): Promise<Task[]> {
+    return this.post<Task[]>('/api/v1/tasks/batch', data);
+  }
+
+  updateTask(id: string, data: UpdateTaskRequest): Promise<Task> {
+    return this.put<Task>(`/api/v1/tasks/${id}`, data);
+  }
+
+  toggleTaskCompleted(id: string): Promise<Task> {
+    return this.patch<Task>(`/api/v1/tasks/${id}/toggle`);
+  }
+
+  deleteTask(id: string): Promise<void> {
+    return this.delete<void>(`/api/v1/tasks/${id}`);
+  }
+
+  getTasksForNote(noteId: string): Promise<Task[]> {
+    return this.get<Task[]>(`/api/v1/tasks/note/${noteId}`);
+  }
+
+  // --- AI Processing Endpoints ---
+
+  summarizeContent(data: SummarizeRequest): Promise<SummarizeResponse> {
+    return this.post<SummarizeResponse>('/api/v1/ai/summarize', data);
+  }
+
+  extractTasksFromContent(data: ExtractTasksRequest): Promise<ExtractTasksResponse> {
+    return this.post<ExtractTasksResponse>('/api/v1/ai/extract-tasks', data);
   }
 }
 
