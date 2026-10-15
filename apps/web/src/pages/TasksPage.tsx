@@ -209,12 +209,12 @@ export function TasksPage() {
   });
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-zinc-950 text-zinc-100 overflow-y-auto">
+    <div className="flex-1 w-full flex flex-col bg-transparent text-zinc-100 overflow-y-auto">
       {/* =========================================================================
-          TOP HEADER: Minimalist Title + Create Trigger (Tight & Compact)
+          TOP HEADER: Minimalist Title + Create Trigger (Edge-to-Edge)
       ========================================================================== */}
-      <div className="border-b border-zinc-850/60 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-20 px-6 sm:px-8 py-2.5">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+      <div className="border-b border-zinc-850/40 bg-transparent px-6 sm:px-8 py-2.5">
+        <div className="w-full flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <h1 className="text-sm font-semibold text-zinc-100 tracking-tight">
               Tasks
@@ -237,7 +237,7 @@ export function TasksPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto w-full px-6 sm:px-8 py-3 flex-1 flex flex-col">
+      <div className="w-full px-6 sm:px-8 py-3 flex-1 flex flex-col bg-transparent">
         {/* =========================================================================
             STATS CARDS: Ultra-Compact Sleek Horizontal Slivers (Strictly p-2.5, no thick borders)
         ========================================================================== */}

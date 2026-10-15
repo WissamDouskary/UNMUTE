@@ -21,7 +21,9 @@ export const AppShell: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const isFullBleed = location.pathname.startsWith('/notes');
+  const isFullBleed =
+    location.pathname.startsWith('/notes') ||
+    location.pathname.startsWith('/tasks');
   const getPageTitle = () => {
     if (location.pathname.startsWith('/notes')) return 'Notes & Knowledge';
     if (location.pathname.startsWith('/tasks')) return 'Tasks & Actions';
