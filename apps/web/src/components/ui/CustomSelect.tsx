@@ -1,11 +1,13 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import React from 'react';
+import * as Select from '@radix-ui/react-select';
 import { ChevronDown, Check } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 export interface SelectOption<T = string> {
   value: T;
   label: string;
   description?: string;
-  icon?: (props: { className?: string }) => ReactNode;
+  icon?: (props: { className?: string }) => React.ReactNode;
   dotColor?: string;
 }
 
@@ -16,142 +18,109 @@ interface CustomSelectProps<T = string> {
   placeholder?: string;
   className?: string;
   buttonClassName?: string;
-  dropdownClassName?: string;
-  align?: 'left' | 'right';
+  align?: 'start' | 'center' | 'end';
   size?: 'sm' | 'md';
 }
 
-export function CustomSelect<T = string>({
+export function CustomSelect<T extends string = string>({
   value,
   onChange,
   options,
   placeholder = 'Select option',
   className = '',
   buttonClassName = '',
-  dropdownClassName = '',
-  align = 'left',
+  align = 'end',
   size = 'md',
 }: CustomSelectProps<T>) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const selectedOption = options.find((opt) => opt.value === value);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen]);
 
   const sizeClasses =
     size === 'sm'
-      ? 'px-2.5 py-1.5 text-xs rounded-lg'
-      : 'px-3 py-2 text-xs rounded-xl';
+      ? 'h-7 px-2.5 text-[11px] rounded-lg'
+      : 'h-8 px-3 text-xs rounded-xl';
 
   return (
-    <div ref={containerRef} className={`relative inline-block ${className}`}>
-      {/* Trigger Button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        className={`flex items-center justify-between gap-2 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-200 transition-all cursor-pointer shadow-sm focus:outline-none focus:border-violet-500/80 ${sizeClasses} ${buttonClassName}`}
+    <Select.Root value={value} onValueChange={(val) => onChange(val as T)}>
+      <Select.Trigger
+        aria-label={placeholder}
+        className={cn(
+          'inline-flex items-center justify-between gap-2 border transition-all cursor-pointer select-none',
+          'bg-zinc-900/80 hover:bg-zinc-850 text-zinc-300 border-zinc-800 hover:border-zinc-700',
+          'focus:outline-none focus:ring-1 focus:ring-violet-500/50 shadow-sm',
+          sizeClasses,
+          buttonClassName,
+          className
+        )}
       >
         <div className="flex items-center gap-2 truncate">
           {selectedOption?.dotColor && (
             <span
-              className={`w-2 h-2 rounded-full flex-shrink-0 ${selectedOption.dotColor}`}
+              className={cn(
+                'w-2 h-2 rounded-full flex-shrink-0',
+                selectedOption.dotColor
+              )}
             />
           )}
           {selectedOption?.icon && (
             <selectedOption.icon className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
           )}
-          <span className="truncate font-medium">
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
+          <Select.Value placeholder={placeholder}>
+            <span className="font-medium text-zinc-200">
+              {selectedOption ? selectedOption.label : placeholder}
+            </span>
+          </Select.Value>
         </div>
-        <ChevronDown
-          className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-200 flex-shrink-0 ${
-            isOpen ? 'rotate-180 text-violet-400' : ''
-          }`}
-        />
-      </button>
+        <Select.Icon asChild>
+          <ChevronDown className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+        </Select.Icon>
+      </Select.Trigger>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div
-          role="listbox"
-          className={`absolute z-50 mt-1.5 min-w-[160px] max-w-[240px] bg-zinc-900/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 p-1 animate-in fade-in zoom-in-95 duration-100 ${
-            align === 'right' ? 'right-0' : 'left-0'
-          } ${dropdownClassName}`}
+      <Select.Portal>
+        <Select.Content
+          position="popper"
+          sideOffset={6}
+          align={align}
+          className={cn(
+            'z-50 min-w-[160px] max-w-[260px] rounded-xl bg-zinc-900/95 backdrop-blur-2xl border border-zinc-800 p-1 shadow-2xl shadow-black/80',
+            'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95'
+          )}
         >
-          {options.map((option) => {
-            const isSelected = option.value === value;
-            return (
-              <button
-                type="button"
-                key={String(option.value)}
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs text-left transition-colors cursor-pointer ${
-                  isSelected
-                    ? 'bg-violet-600/15 text-violet-300 font-semibold'
-                    : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
-                }`}
+          <Select.Viewport className="p-0.5">
+            {options.map((option) => (
+              <Select.Item
+                key={option.value}
+                value={option.value}
+                className={cn(
+                  'relative flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 select-none outline-none transition-colors cursor-pointer',
+                  'hover:bg-zinc-800 hover:text-white focus:bg-zinc-800 focus:text-white',
+                  'data-[state=checked]:bg-violet-600/15 data-[state=checked]:text-violet-300 data-[state=checked]:font-semibold'
+                )}
               >
                 <div className="flex items-center gap-2 truncate">
                   {option.dotColor && (
                     <span
-                      className={`w-2 h-2 rounded-full flex-shrink-0 ${option.dotColor}`}
+                      className={cn(
+                        'w-2 h-2 rounded-full flex-shrink-0',
+                        option.dotColor
+                      )}
                     />
                   )}
                   {option.icon && (
                     <option.icon className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
                   )}
-                  <div className="truncate">
-                    <div>{option.label}</div>
-                    {option.description && (
-                      <div className="text-[10px] text-zinc-500 font-normal truncate">
-                        {option.description}
-                      </div>
-                    )}
-                  </div>
+                  <Select.ItemText>
+                    <span>{option.label}</span>
+                  </Select.ItemText>
                 </div>
 
-                {isSelected && (
+                <Select.ItemIndicator>
                   <Check className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
+                </Select.ItemIndicator>
+              </Select.Item>
+            ))}
+          </Select.Viewport>
+        </Select.Content>
+      </Select.Portal>
+    </Select.Root>
   );
 }
