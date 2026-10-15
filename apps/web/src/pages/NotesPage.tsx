@@ -146,6 +146,9 @@ export function NotesPage() {
     },
   });
 
+  const updateNoteMutationRef = useRef(updateNoteMutation);
+  updateNoteMutationRef.current = updateNoteMutation;
+
   const saveChanges = useCallback(
     (
       noteId: string,
@@ -156,7 +159,7 @@ export function NotesPage() {
       currentArchived: boolean
     ) => {
       if (!currentTitle.trim()) return;
-      updateNoteMutation.mutate({
+      updateNoteMutationRef.current.mutate({
         noteId,
         payload: {
           title: currentTitle.trim(),
@@ -167,7 +170,7 @@ export function NotesPage() {
         },
       });
     },
-    [updateNoteMutation]
+    []
   );
 
   // Switch Note synchronization: Flush pending changes from previous note, then load new note
@@ -218,7 +221,7 @@ export function NotesPage() {
 
     if (!titleChanged && !contentChanged) return;
 
-    setSaveStatus('unsaved');
+    setSaveStatus((prev) => (prev !== 'unsaved' ? 'unsaved' : prev));
     pendingSaveRef.current = { id: selectedNoteId, title, content, tags, isPinned, isArchived };
 
     if (saveTimeoutRef.current) {

@@ -13,6 +13,10 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0', // Required for Docker
+    watch: {
+      usePolling: true,
+      interval: 100,
+    },
     proxy: {
       '/api': {
         target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',

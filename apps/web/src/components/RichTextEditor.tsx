@@ -156,6 +156,7 @@ export function RichTextEditor({
     extensions: [
       StarterKit.configure({
         codeBlock: false,
+        link: false,
       }),
       Typography,
       TextDirection.configure({
@@ -190,7 +191,8 @@ export function RichTextEditor({
       onChange(html);
     },
     onSelectionUpdate: ({ editor }) => {
-      setIsInTable(editor.isActive('table'));
+      const active = editor.isActive('table');
+      setIsInTable((prev) => (prev !== active ? active : prev));
     },
   });
 
@@ -203,60 +205,6 @@ export function RichTextEditor({
       editor.commands.setContent(content || '<p></p>', { emitUpdate: false });
     }
   }, [content, editor]);
-
-  // Handle Slash commands detection via keyboard
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!editor) return;
-
-      if (slashMenuOpen) {
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          setSlashIndex((prev) => (prev + 1) % filteredCommands.length);
-          return;
-        }
-        if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          setSlashIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
-          return;
-        }
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          const selectedCmd = filteredCommands[slashIndex];
-          if (selectedCmd) {
-            // Delete the slash and query text
-            const { from } = editor.state.selection;
-            const startPos = Math.max(0, from - (slashQuery.length + 1));
-            editor.commands.deleteRange({ from: startPos, to: from });
-            selectedCmd.action(editor);
-          }
-          setSlashMenuOpen(false);
-          setSlashQuery('');
-          return;
-        }
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          setSlashMenuOpen(false);
-          setSlashQuery('');
-          return;
-        }
-      }
-
-      // Check for Slash trigger: user types '/' at start of line or after space
-      if (e.key === '/' && !slashMenuOpen) {
-        // Calculate coords of cursor for positioning dropdown
-        setTimeout(() => {
-          const { from } = editor.state.selection;
-          const coords = editor.view.coordsAtPos(from);
-          setSlashCoords({ x: coords.left, y: coords.bottom + 8 });
-          setSlashMenuOpen(true);
-          setSlashQuery('');
-          setSlashIndex(0);
-        }, 10);
-      }
-    },
-    [editor, slashMenuOpen, slashIndex]
-  );
 
   const slashCommands = useMemo<CommandItem[]>(() => {
     const aiCommands: CommandItem[] = [];
@@ -289,6 +237,67 @@ export function RichTextEditor({
     cmd.title.toLowerCase().includes(slashQuery.toLowerCase()) ||
     cmd.description.toLowerCase().includes(slashQuery.toLowerCase()) ||
     cmd.id.toLowerCase().includes(slashQuery.toLowerCase())
+  );
+
+  // Handle Slash commands detection via keyboard
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!editor || editor.isDestroyed) return;
+
+      if (slashMenuOpen) {
+        if (e.key === 'ArrowDown' && filteredCommands.length > 0) {
+          e.preventDefault();
+          setSlashIndex((prev) => (prev + 1) % filteredCommands.length);
+          return;
+        }
+        if (e.key === 'ArrowUp' && filteredCommands.length > 0) {
+          e.preventDefault();
+          setSlashIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const selectedCmd = filteredCommands[slashIndex];
+          if (selectedCmd) {
+            // Delete the slash and query text
+            const { from } = editor.state.selection;
+            const startPos = Math.max(0, from - (slashQuery.length + 1));
+            editor.commands.deleteRange({ from: startPos, to: from });
+            selectedCmd.action(editor);
+          }
+          setSlashMenuOpen(false);
+          setSlashQuery('');
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setSlashMenuOpen(false);
+          setSlashQuery('');
+          return;
+        }
+      }
+
+      // Check for Slash trigger: user types '/' at start of line or after space
+      if (e.key === '/' && !slashMenuOpen) {
+        // Calculate coords of cursor for positioning dropdown
+        setTimeout(() => {
+          if (!editor || editor.isDestroyed) return;
+          try {
+            const { from } = editor.state.selection;
+            const coords = editor.view?.coordsAtPos?.(from);
+            if (coords) {
+              setSlashCoords({ x: coords.left, y: coords.bottom + 8 });
+              setSlashMenuOpen(true);
+              setSlashQuery('');
+              setSlashIndex(0);
+            }
+          } catch (err) {
+            console.warn('Could not determine coords for slash menu:', err);
+          }
+        }, 10);
+      }
+    },
+    [editor, slashMenuOpen, slashIndex, filteredCommands, slashQuery]
   );
 
   // Link handler
