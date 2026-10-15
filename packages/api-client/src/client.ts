@@ -9,6 +9,11 @@ import type {
   LoginRequest,
   RefreshTokenRequest,
   ApiError,
+  Note,
+  CreateNoteRequest,
+  UpdateNoteRequest,
+  PageResponse,
+  NoteListParams,
 } from './types';
 
 // Ambient declaration for process in environments without @types/node
@@ -191,6 +196,59 @@ export class ApiClient {
 
   getMe(): Promise<User> {
     return this.get<User>('/api/v1/users/me');
+  }
+
+  // --- Notes Endpoints ---
+
+  getNotes(params: NoteListParams = {}): Promise<PageResponse<Note>> {
+    const query = new URLSearchParams();
+    if (params.archived !== undefined) {
+      query.set('archived', String(params.archived));
+    }
+    if (params.search) {
+      query.set('search', params.search);
+    }
+    if (params.tag) {
+      query.set('tag', params.tag);
+    }
+    if (params.page !== undefined) {
+      query.set('page', String(params.page));
+    }
+    if (params.size !== undefined) {
+      query.set('size', String(params.size));
+    }
+
+    const queryString = query.toString();
+    const path = queryString ? `/api/v1/notes?${queryString}` : '/api/v1/notes';
+    return this.get<PageResponse<Note>>(path);
+  }
+
+  getNote(id: string): Promise<Note> {
+    return this.get<Note>(`/api/v1/notes/${id}`);
+  }
+
+  createNote(data: CreateNoteRequest): Promise<Note> {
+    return this.post<Note>('/api/v1/notes', data);
+  }
+
+  updateNote(id: string, data: UpdateNoteRequest): Promise<Note> {
+    return this.put<Note>(`/api/v1/notes/${id}`, data);
+  }
+
+  toggleArchiveNote(id: string): Promise<Note> {
+    return this.patch<Note>(`/api/v1/notes/${id}/archive`);
+  }
+
+  togglePinNote(id: string): Promise<Note> {
+    return this.patch<Note>(`/api/v1/notes/${id}/pin`);
+  }
+
+  deleteNote(id: string): Promise<void> {
+    return this.delete<void>(`/api/v1/notes/${id}`);
+  }
+
+  getNoteTags(): Promise<string[]> {
+    return this.get<string[]>('/api/v1/notes/tags');
   }
 }
 

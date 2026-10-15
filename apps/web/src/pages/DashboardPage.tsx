@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '@unmute/api-client';
 import type { User } from '@unmute/api-client';
@@ -247,28 +248,31 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors flex flex-col justify-between">
+          <Link
+            to="/notes"
+            className="p-5 rounded-2xl bg-[var(--color-surface-secondary)] border border-[var(--color-accent-muted)] hover:border-[var(--color-accent)] transition-all hover:scale-[1.01] flex flex-col justify-between group cursor-pointer"
+          >
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-accent-hover)]">
-                  Phase 2
+                  Phase 2 Active
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent-hover)] text-[10px] font-semibold">
-                  Up Next
+                  Open Workspace
                 </span>
               </div>
-              <h3 className="font-semibold text-sm text-[var(--color-text-primary)]">
+              <h3 className="font-semibold text-sm text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-hover)] transition-colors">
                 Notes & Knowledge Ingestion
               </h3>
               <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                Multi-format note creation, markdown editor, auto-tagging, and vector search embeddings.
+                Rich Markdown editor, split live preview, tag taxonomy, and user-scoped CRUD endpoints.
               </p>
             </div>
             <div className="mt-4 flex items-center gap-1.5 text-xs text-[var(--color-accent-hover)] font-medium">
-              <span>Readiness checked</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span>Launch Notes Workspace</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
-          </div>
+          </Link>
 
           <div className="p-5 rounded-2xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] opacity-70 flex flex-col justify-between">
             <div>

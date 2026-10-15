@@ -34,3 +34,49 @@ export interface ApiError {
   errors?: Record<string, string[]>;
   timestamp?: string;
 }
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string | null;
+  summary: string | null;
+  isPinned: boolean;
+  isArchived: boolean;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateNoteRequest {
+  title: string;
+  content?: string;
+  tags?: string[];
+  isPinned?: boolean;
+}
+
+export interface UpdateNoteRequest {
+  title?: string;
+  content?: string;
+  summary?: string;
+  tags?: string[];
+  isPinned?: boolean;
+  isArchived?: boolean;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface NoteListParams {
+  archived?: boolean;
+  search?: string;
+  tag?: string;
+  page?: number;
+  size?: number;
+}

@@ -9,6 +9,11 @@ export type {
   LoginRequest,
   RefreshTokenRequest,
   ApiError,
+  Note,
+  CreateNoteRequest,
+  UpdateNoteRequest,
+  PageResponse,
+  NoteListParams,
 } from './types';
 
 export default apiClient;

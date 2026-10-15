@@ -52,6 +52,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleResourceNotFound(ResourceNotFoundException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+            HttpStatus.NOT_FOUND.value(),
+            ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
     @ExceptionHandler(InvalidTokenException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidToken(InvalidTokenException ex) {
         ApiErrorResponse response = new ApiErrorResponse(

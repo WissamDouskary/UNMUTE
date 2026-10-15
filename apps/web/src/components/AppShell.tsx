@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard,
@@ -17,8 +17,20 @@ import {
 export const AppShell: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const isFullBleed = location.pathname.startsWith('/notes');
+  const getPageTitle = () => {
+    if (location.pathname.startsWith('/notes')) return 'Notes & Knowledge';
+    if (location.pathname.startsWith('/tasks')) return 'Tasks & Actions';
+    if (location.pathname.startsWith('/projects')) return 'Projects';
+    if (location.pathname.startsWith('/sources')) return 'Sources';
+    if (location.pathname.startsWith('/settings')) return 'Settings';
+    return 'Overview';
+  };
+  const pageTitle = getPageTitle();
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -198,16 +210,16 @@ export const AppShell: React.FC = () => {
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className={`flex-1 flex flex-col min-w-0 ${isFullBleed ? 'h-screen overflow-hidden' : 'overflow-y-auto'}`}>
         {/* Top Header Bar */}
-        <header className="hidden md:flex items-center justify-between h-16 px-8 border-b border-[var(--color-border)] bg-[var(--color-surface-primary)] sticky top-0 z-20 backdrop-blur-md bg-opacity-80">
+        <header className="hidden md:flex items-center justify-between h-16 px-8 border-b border-[var(--color-border)] bg-[var(--color-surface-primary)] sticky top-0 z-20 backdrop-blur-md bg-opacity-80 flex-shrink-0">
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-medium text-[var(--color-text-secondary)]">
               UNMUTE Platform
             </h2>
             <span className="text-[var(--color-border)]">/</span>
             <span className="text-sm font-semibold text-[var(--color-text-primary)]">
-              Overview
+              {pageTitle}
             </span>
           </div>
 
@@ -223,7 +235,7 @@ export const AppShell: React.FC = () => {
         </header>
 
         {/* Dynamic Nested View */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className={`flex-1 flex flex-col min-h-0 w-full ${isFullBleed ? 'overflow-hidden' : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto'}`}>
           <Outlet />
         </main>
       </div>

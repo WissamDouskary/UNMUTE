@@ -6,6 +6,7 @@ import { AppShell } from './components/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { NotesPage } from './pages/NotesPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
 function App() {
@@ -23,16 +24,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<AppShell />}>
               <Route index element={<DashboardPage />} />
-              <Route
-                path="notes"
-                element={
-                  <PlaceholderPage
-                    title="Notes & Knowledge Ingestion"
-                    description="Capture, edit, and organize thoughts with rich markdown and AI vector search."
-                    phase="Phase 2"
-                  />
-                }
-              />
+              <Route path="notes" element={<NotesPage />} />
               <Route
                 path="tasks"
                 element={
