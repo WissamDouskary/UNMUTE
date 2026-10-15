@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -61,9 +61,10 @@ export function NotesPage() {
   const [newTagText, setNewTagText] = useState<string>('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  // --- Synchronization & Save Timers / Refs ---
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isInitialMount = useRef<boolean>(true);
   const currentNoteIdRef = useRef<string | null>(null);
+  const pendingSaveNoteIdRef = useRef<string | null>(null);
   const pendingSaveRef = useRef<{
     id: string;
     title: string;
@@ -73,7 +74,25 @@ export function NotesPage() {
     isArchived: boolean;
   } | null>(null);
 
-  // 1. TanStack Query: Fetch Notes
+  const selectedNoteIdRef = useRef<string | null>(selectedNoteId);
+  selectedNoteIdRef.current = selectedNoteId;
+
+  const titleRef = useRef<string>(title);
+  titleRef.current = title;
+
+  const contentRef = useRef<string>(content);
+  contentRef.current = content;
+
+  const tagsRef = useRef<string[]>(tags);
+  tagsRef.current = tags;
+
+  const isPinnedRef = useRef<boolean>(isPinned);
+  isPinnedRef.current = isPinned;
+
+  const isArchivedRef = useRef<boolean>(isArchived);
+  isArchivedRef.current = isArchived;
+
+  // 1. TanStack Query: Fetch Notes with keepPreviousData to prevent UI flashes on filter switch
   const notesQueryKey = ['notes', { activeTab, searchQuery, selectedTag }];
 
   const { data: notesData, isLoading: loading } = useQuery({
@@ -92,6 +111,7 @@ export function NotesPage() {
       }
       return fetched;
     },
+    placeholderData: keepPreviousData,
   });
 
   const notes = useMemo(() => notesData ?? [], [notesData]);
@@ -101,6 +121,13 @@ export function NotesPage() {
     queryKey: ['tags'],
     queryFn: () => apiClient.getNoteTags(),
   });
+
+  // If currently filtered tag no longer exists in available tags, reset to null (#all)
+  useEffect(() => {
+    if (selectedTag && availableTags.length > 0 && !availableTags.includes(selectedTag)) {
+      setSelectedTag(null);
+    }
+  }, [availableTags, selectedTag]);
 
   // Ensure a valid note is selected whenever the notes list changes
   useEffect(() => {
@@ -118,6 +145,9 @@ export function NotesPage() {
   const activeNote = useMemo(() => {
     return notes.find((n) => n.id === selectedNoteId) || null;
   }, [notes, selectedNoteId]);
+
+  const activeNoteRef = useRef<Note | null>(activeNote);
+  activeNoteRef.current = activeNote;
 
   // --- Auto-Save Mutation ---
   const updateNoteMutation = useMutation({
@@ -148,42 +178,110 @@ export function NotesPage() {
   const updateNoteMutationRef = useRef(updateNoteMutation);
   updateNoteMutationRef.current = updateNoteMutation;
 
-  const saveChanges = useCallback(
+  const performSave = useCallback(
     (
       noteId: string,
-      currentTitle: string,
-      currentContent: string,
-      currentTags: string[],
-      currentPinned: boolean,
-      currentArchived: boolean
+      payload: {
+        title: string;
+        content: string;
+        tags: string[];
+        isPinned: boolean;
+        isArchived: boolean;
+      }
     ) => {
-      if (!currentTitle.trim()) return;
+      const titleToSave = payload.title.trim() || 'Untitled';
       updateNoteMutationRef.current.mutate({
         noteId,
         payload: {
-          title: currentTitle.trim(),
-          content: currentContent,
-          tags: currentTags,
-          isPinned: currentPinned,
-          isArchived: currentArchived,
+          title: titleToSave,
+          content: payload.content,
+          tags: payload.tags,
+          isPinned: payload.isPinned,
+          isArchived: payload.isArchived,
         },
       });
     },
     []
   );
 
-  // Switch Note synchronization: Flush pending changes from previous note, then load new note
+  const flushPendingSave = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    if (pendingSaveNoteIdRef.current && pendingSaveRef.current) {
+      const idToSave = pendingSaveNoteIdRef.current;
+      const dataToSave = { ...pendingSaveRef.current };
+      pendingSaveNoteIdRef.current = null;
+      pendingSaveRef.current = null;
+      performSave(idToSave, dataToSave);
+    }
+  }, [performSave]);
+
+  const triggerAutoSave = useCallback(
+    (
+      overrides?: Partial<{
+        title: string;
+        content: string;
+        tags: string[];
+        isPinned: boolean;
+        isArchived: boolean;
+      }>
+    ) => {
+      const currentId = selectedNoteIdRef.current;
+      if (!currentId) return;
+
+      setSaveStatus('unsaved');
+      pendingSaveNoteIdRef.current = currentId;
+      pendingSaveRef.current = {
+        id: currentId,
+        title: overrides?.title !== undefined ? overrides.title : titleRef.current,
+        content: overrides?.content !== undefined ? overrides.content : contentRef.current,
+        tags: overrides?.tags !== undefined ? overrides.tags : tagsRef.current,
+        isPinned: overrides?.isPinned !== undefined ? overrides.isPinned : isPinnedRef.current,
+        isArchived: overrides?.isArchived !== undefined ? overrides.isArchived : isArchivedRef.current,
+      };
+
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(() => {
+        if (pendingSaveNoteIdRef.current && pendingSaveRef.current) {
+          const idToSave = pendingSaveNoteIdRef.current;
+          const payload = { ...pendingSaveRef.current };
+          pendingSaveNoteIdRef.current = null;
+          pendingSaveRef.current = null;
+          performSave(idToSave, payload);
+        }
+      }, 1200);
+    },
+    [performSave]
+  );
+
+  // Switch Note synchronization: Flush pending changes from previous note, then cleanly load new note
   useEffect(() => {
     if (selectedNoteId !== currentNoteIdRef.current) {
-      if (pendingSaveRef.current && pendingSaveRef.current.id === currentNoteIdRef.current) {
-        saveChanges(
-          pendingSaveRef.current.id,
-          pendingSaveRef.current.title,
-          pendingSaveRef.current.content,
-          pendingSaveRef.current.tags,
-          pendingSaveRef.current.isPinned,
-          pendingSaveRef.current.isArchived
-        );
+      if (
+        currentNoteIdRef.current &&
+        pendingSaveNoteIdRef.current === currentNoteIdRef.current &&
+        pendingSaveRef.current
+      ) {
+        const idToSave = pendingSaveNoteIdRef.current;
+        const dataToSave = { ...pendingSaveRef.current };
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+          saveTimeoutRef.current = null;
+        }
+        pendingSaveNoteIdRef.current = null;
+        pendingSaveRef.current = null;
+        performSave(idToSave, dataToSave);
+      } else {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+          saveTimeoutRef.current = null;
+        }
+        pendingSaveNoteIdRef.current = null;
         pendingSaveRef.current = null;
       }
 
@@ -191,79 +289,73 @@ export function NotesPage() {
 
       if (activeNote) {
         setTitle(activeNote.title || '');
+        titleRef.current = activeNote.title || '';
         setContent(activeNote.content || '');
+        contentRef.current = activeNote.content || '';
         setTags(activeNote.tags || []);
+        tagsRef.current = activeNote.tags || [];
         setIsPinned(activeNote.isPinned);
+        isPinnedRef.current = activeNote.isPinned;
         setIsArchived(activeNote.isArchived);
+        isArchivedRef.current = activeNote.isArchived;
         setSaveStatus('saved');
       } else {
         setTitle('');
+        titleRef.current = '';
         setContent('');
+        contentRef.current = '';
         setTags([]);
+        tagsRef.current = [];
         setIsPinned(false);
+        isPinnedRef.current = false;
         setIsArchived(false);
+        isArchivedRef.current = false;
         setSaveStatus('saved');
       }
-    }
-  }, [selectedNoteId, activeNote, saveChanges]);
-
-  // Trigger debounced auto-save (1200ms) whenever user edits title or content
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    if (!selectedNoteId || !activeNote) return;
-
-    const titleChanged = title !== activeNote.title;
-    const contentChanged = content !== (activeNote.content || '');
-
-    if (!titleChanged && !contentChanged) return;
-
-    setSaveStatus((prev) => (prev !== 'unsaved' ? 'unsaved' : prev));
-    pendingSaveRef.current = { id: selectedNoteId, title, content, tags, isPinned, isArchived };
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(() => {
-      saveChanges(selectedNoteId, title, content, tags, isPinned, isArchived);
-      pendingSaveRef.current = null;
-    }, 1200);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+    } else if (activeNote) {
+      // Same note, sync query changes (e.g. tag additions, pin/archive) only if no pending local typing
+      if (!pendingSaveRef.current) {
+        setTitle(activeNote.title || '');
+        titleRef.current = activeNote.title || '';
+        setContent(activeNote.content || '');
+        contentRef.current = activeNote.content || '';
+        setTags(activeNote.tags || []);
+        tagsRef.current = activeNote.tags || [];
+        setIsPinned(activeNote.isPinned);
+        isPinnedRef.current = activeNote.isPinned;
+        setIsArchived(activeNote.isArchived);
+        isArchivedRef.current = activeNote.isArchived;
       }
-    };
-  }, [title, content, tags, isPinned, isArchived, selectedNoteId, activeNote, saveChanges]);
+    }
+  }, [selectedNoteId, activeNote, performSave]);
 
   // Flush on tab close or navigation
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (pendingSaveRef.current) {
-        saveChanges(
-          pendingSaveRef.current.id,
-          pendingSaveRef.current.title,
-          pendingSaveRef.current.content,
-          pendingSaveRef.current.tags,
-          pendingSaveRef.current.isPinned,
-          pendingSaveRef.current.isArchived
-        );
-      }
+      flushPendingSave();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      handleBeforeUnload();
+      flushPendingSave();
     };
-  }, [saveChanges]);
+  }, [flushPendingSave]);
 
-  // Tiptap Content Change Callback
-  const handleEditorChange = useCallback((newHtml: string) => {
-    setContent(newHtml);
-  }, []);
+  // User input handlers
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle);
+    titleRef.current = newTitle;
+    triggerAutoSave({ title: newTitle });
+  };
+
+  const handleEditorChange = useCallback(
+    (newHtml: string) => {
+      setContent(newHtml);
+      contentRef.current = newHtml;
+      triggerAutoSave({ content: newHtml });
+    },
+    [triggerAutoSave]
+  );
 
   // --- Create Note Mutation ---
   const createNoteMutation = useMutation({
@@ -292,6 +384,7 @@ export function NotesPage() {
   });
 
   const handleCreateNote = () => {
+    flushPendingSave();
     createNoteMutation.mutate({
       title: 'Untitled',
       content: '<p></p>',
@@ -333,6 +426,7 @@ export function NotesPage() {
       queryClient.invalidateQueries({ queryKey: ['notes'] });
       if (selectedNoteId === updated.id) {
         setIsPinned(updated.isPinned);
+        isPinnedRef.current = updated.isPinned;
       }
     },
   });
@@ -341,6 +435,9 @@ export function NotesPage() {
     e?.stopPropagation();
     const targetId = noteId || selectedNoteId;
     if (!targetId) return;
+    if (pendingSaveNoteIdRef.current === targetId) {
+      flushPendingSave();
+    }
     pinMutation.mutate(targetId);
   };
 
@@ -383,6 +480,7 @@ export function NotesPage() {
       queryClient.invalidateQueries({ queryKey: ['tags'] });
       if (selectedNoteId === updated.id) {
         setIsArchived(updated.isArchived);
+        isArchivedRef.current = updated.isArchived;
       }
     },
   });
@@ -391,6 +489,9 @@ export function NotesPage() {
     e?.stopPropagation();
     const targetId = noteId || selectedNoteId;
     if (!targetId) return;
+    if (pendingSaveNoteIdRef.current === targetId) {
+      flushPendingSave();
+    }
     archiveMutation.mutate(targetId);
   };
 
@@ -426,44 +527,86 @@ export function NotesPage() {
   });
 
   const handleDeleteNote = (noteId: string) => {
+    if (pendingSaveNoteIdRef.current === noteId) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      pendingSaveNoteIdRef.current = null;
+      pendingSaveRef.current = null;
+    }
     deleteMutation.mutate(noteId);
   };
 
   // --- Tag Mutations ---
   const updateTagsMutation = useMutation({
-    mutationFn: ({ noteId, nextTags }: { noteId: string; nextTags: string[] }) =>
-      apiClient.updateNote(noteId, {
-        title,
-        content,
+    mutationFn: ({ noteId, nextTags }: { noteId: string; nextTags: string[] }) => {
+      const noteToUpdate = notes.find((n) => n.id === noteId) || activeNote;
+      const titleToUse = (titleRef.current || noteToUpdate?.title || 'Untitled').trim();
+      const contentToUse = contentRef.current ?? noteToUpdate?.content ?? '';
+
+      return apiClient.updateNote(noteId, {
+        title: titleToUse,
+        content: contentToUse,
         tags: nextTags,
-        isPinned,
-        isArchived,
-      }),
+        isPinned: noteToUpdate ? noteToUpdate.isPinned : isPinnedRef.current,
+        isArchived: noteToUpdate ? noteToUpdate.isArchived : isArchivedRef.current,
+      });
+    },
     onSuccess: (updated) => {
       queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
         if (!old) return [];
         return old.map((n) => (n.id === updated.id ? updated : n));
       });
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
       queryClient.invalidateQueries({ queryKey: ['tags'] });
+    },
+    onError: (err) => {
+      console.error('Failed to update tags:', err);
     },
   });
 
   const handleAddTag = (tagToAdd: string) => {
-    const clean = tagToAdd.trim().toLowerCase();
-    if (!clean || tags.includes(clean) || !selectedNoteId) return;
+    const clean = tagToAdd.trim().toLowerCase().replace(/^#+/, '');
+    if (!clean || !selectedNoteId) return;
 
-    const nextTags = [...tags, clean];
+    const currentTags = tagsRef.current || activeNote?.tags || [];
+    if (currentTags.includes(clean)) {
+      setNewTagText('');
+      setShowTagInput(false);
+      return;
+    }
+
+    const nextTags = [...currentTags, clean];
     setTags(nextTags);
+    tagsRef.current = nextTags;
     setNewTagText('');
     setShowTagInput(false);
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    pendingSaveRef.current = null;
+    pendingSaveNoteIdRef.current = null;
 
     updateTagsMutation.mutate({ noteId: selectedNoteId, nextTags });
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
     if (!selectedNoteId) return;
-    const nextTags = tags.filter((t) => t !== tagToRemove);
+    const currentTags = tagsRef.current || activeNote?.tags || [];
+    const nextTags = currentTags.filter((t) => t !== tagToRemove);
     setTags(nextTags);
+    tagsRef.current = nextTags;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    pendingSaveRef.current = null;
+    pendingSaveNoteIdRef.current = null;
+
     updateTagsMutation.mutate({ noteId: selectedNoteId, nextTags });
   };
 
@@ -513,7 +656,11 @@ export function NotesPage() {
           : '';
       const summaryCallout = `<blockquote class="ai-summary-callout"><strong>✨ AI Executive Summary</strong><p>${res.summary}</p>${keyPointsHtml}</blockquote><p></p>`;
 
-      setContent((prev) => `${summaryCallout}${prev}`);
+      const nextContent = `${summaryCallout}${contentRef.current}`;
+      setContent(nextContent);
+      contentRef.current = nextContent;
+      triggerAutoSave({ content: nextContent });
+
       setAiNotification({
         message: 'Executive summary generated by AI and inserted into note!',
         type: 'success',
@@ -559,7 +706,10 @@ export function NotesPage() {
           .join('');
 
         const taskListBlock = `<p></p><ul data-type="taskList">${taskItemsHtml}</ul><p></p>`;
-        setContent((prev) => `${prev}${taskListBlock}`);
+        const nextContent = `${contentRef.current}${taskListBlock}`;
+        setContent(nextContent);
+        contentRef.current = nextContent;
+        triggerAutoSave({ content: nextContent });
 
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
 
@@ -1021,7 +1171,7 @@ export function NotesPage() {
                   type="text"
                   placeholder="Untitled Note"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => handleTitleChange(e.target.value)}
                   className="w-full text-4xl sm:text-5xl font-extrabold text-white placeholder:text-zinc-700 tracking-tight leading-tight focus:outline-none mb-4 w-full bg-transparent border-none selection:bg-violet-600/30"
                 />
 
@@ -1097,6 +1247,7 @@ export function NotesPage() {
                 {/* Next-Gen Tiptap Block WYSIWYG Editor */}
                 <div className="flex-1 w-full pb-24">
                   <RichTextEditor
+                    key={selectedNoteId || 'empty'}
                     content={content}
                     onChange={handleEditorChange}
                     placeholder="Write your thoughts, or press '/' for commands..."
