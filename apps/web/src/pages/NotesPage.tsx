@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
   Search,
@@ -23,16 +24,13 @@ type FilterTab = 'all' | 'pinned' | 'archived';
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
 export function NotesPage() {
-  // --- Data State ---
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  // --- Filtering & Search ---
+  // --- Filtering & Selection State ---
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   // --- Active Note Form State ---
   const [title, setTitle] = useState<string>('');
@@ -49,21 +47,22 @@ export function NotesPage() {
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef<boolean>(true);
+  const currentNoteIdRef = useRef<string | null>(null);
+  const pendingSaveRef = useRef<{
+    id: string;
+    title: string;
+    content: string;
+    tags: string[];
+    isPinned: boolean;
+    isArchived: boolean;
+  } | null>(null);
 
-  // Fetch Tags
-  const fetchTags = useCallback(async () => {
-    try {
-      const tagList = await apiClient.getNoteTags();
-      setAvailableTags(tagList);
-    } catch {
-      // Non-critical, ignore
-    }
-  }, []);
+  // 1. TanStack Query: Fetch Notes
+  const notesQueryKey = ['notes', { activeTab, searchQuery, selectedTag }];
 
-  // Fetch Notes
-  const fetchNotes = useCallback(async () => {
-    setLoading(true);
-    try {
+  const { data: notesData, isLoading: loading } = useQuery({
+    queryKey: notesQueryKey,
+    queryFn: async () => {
       const response = await apiClient.getNotes({
         archived: activeTab === 'archived',
         search: searchQuery.trim() || undefined,
@@ -75,72 +74,96 @@ export function NotesPage() {
       if (activeTab === 'pinned') {
         fetched = fetched.filter((n) => n.isPinned);
       }
-      setNotes(fetched);
+      return fetched;
+    },
+  });
 
-      // If nothing selected or selected was deleted, select first if available
-      const first = fetched[0];
-      if (first && (!selectedNoteId || !fetched.some((n) => n.id === selectedNoteId))) {
-        setSelectedNoteId(first.id);
-      } else if (fetched.length === 0) {
-        setSelectedNoteId(null);
-      }
-    } catch (err) {
-      console.error('Failed to fetch notes:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeTab, searchQuery, selectedTag, selectedNoteId]);
+  const notes = useMemo(() => notesData ?? [], [notesData]);
 
+  // 2. TanStack Query: Fetch Available Tags
+  const { data: availableTags = [] } = useQuery({
+    queryKey: ['tags'],
+    queryFn: () => apiClient.getNoteTags(),
+  });
+
+  // Ensure a valid note is selected whenever the notes list changes
   useEffect(() => {
-    fetchNotes();
-    fetchTags();
-  }, [activeTab, searchQuery, selectedTag, fetchNotes, fetchTags]);
+    const first = notes[0];
+    if (first) {
+      if (!selectedNoteId || !notes.some((n) => n.id === selectedNoteId)) {
+        setSelectedNoteId(first.id);
+      }
+    } else {
+      setSelectedNoteId(null);
+    }
+  }, [notes, selectedNoteId]);
 
-  const currentNoteIdRef = useRef<string | null>(null);
-  const pendingSaveRef = useRef<{ id: string; title: string; content: string; tags: string[] } | null>(null);
-
-  // Synchronize form when selectedNoteId changes (only on note switch)
+  // Active Note reference
   const activeNote = useMemo(() => {
     return notes.find((n) => n.id === selectedNoteId) || null;
   }, [notes, selectedNoteId]);
 
-  // --- Auto-Save Handler (Debounced) ---
-  const saveChanges = useCallback(
-    async (noteId: string, currentTitle: string, currentContent: string, currentTags: string[]) => {
-      if (!currentTitle.trim()) return;
-
+  // --- Auto-Save Mutation ---
+  const updateNoteMutation = useMutation({
+    mutationFn: ({
+      noteId,
+      payload,
+    }: {
+      noteId: string;
+      payload: { title: string; content: string; tags: string[]; isPinned: boolean; isArchived: boolean };
+    }) => apiClient.updateNote(noteId, payload),
+    onMutate: () => {
       setSaveStatus('saving');
-      try {
-        const updated = await apiClient.updateNote(noteId, {
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
+        if (!old) return [];
+        return old.map((n) => (n.id === updated.id ? updated : n));
+      });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      setSaveStatus('saved');
+    },
+    onError: (err) => {
+      console.error('Error saving note:', err);
+      setSaveStatus('error');
+    },
+  });
+
+  const saveChanges = useCallback(
+    (
+      noteId: string,
+      currentTitle: string,
+      currentContent: string,
+      currentTags: string[],
+      currentPinned: boolean,
+      currentArchived: boolean
+    ) => {
+      if (!currentTitle.trim()) return;
+      updateNoteMutation.mutate({
+        noteId,
+        payload: {
           title: currentTitle.trim(),
           content: currentContent,
           tags: currentTags,
-          isPinned,
-          isArchived,
-        });
-
-        // Update in-memory list
-        setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
-        setSaveStatus('saved');
-        fetchTags();
-      } catch (err) {
-        console.error('Error saving note:', err);
-        setSaveStatus('error');
-      }
+          isPinned: currentPinned,
+          isArchived: currentArchived,
+        },
+      });
     },
-    [isPinned, isArchived, fetchTags]
+    [updateNoteMutation]
   );
 
   // Switch Note synchronization: Flush pending changes from previous note, then load new note
   useEffect(() => {
     if (selectedNoteId !== currentNoteIdRef.current) {
-      // Flush previous pending save immediately before switching
       if (pendingSaveRef.current && pendingSaveRef.current.id === currentNoteIdRef.current) {
         saveChanges(
           pendingSaveRef.current.id,
           pendingSaveRef.current.title,
           pendingSaveRef.current.content,
-          pendingSaveRef.current.tags
+          pendingSaveRef.current.tags,
+          pendingSaveRef.current.isPinned,
+          pendingSaveRef.current.isArchived
         );
         pendingSaveRef.current = null;
       }
@@ -179,14 +202,14 @@ export function NotesPage() {
     if (!titleChanged && !contentChanged) return;
 
     setSaveStatus('unsaved');
-    pendingSaveRef.current = { id: selectedNoteId, title, content, tags };
+    pendingSaveRef.current = { id: selectedNoteId, title, content, tags, isPinned, isArchived };
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
     saveTimeoutRef.current = setTimeout(() => {
-      saveChanges(selectedNoteId, title, content, tags);
+      saveChanges(selectedNoteId, title, content, tags, isPinned, isArchived);
       pendingSaveRef.current = null;
     }, 1200);
 
@@ -195,7 +218,7 @@ export function NotesPage() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [title, content, tags, selectedNoteId, activeNote, saveChanges]);
+  }, [title, content, tags, isPinned, isArchived, selectedNoteId, activeNote, saveChanges]);
 
   // Flush on tab close or navigation
   useEffect(() => {
@@ -205,7 +228,9 @@ export function NotesPage() {
           pendingSaveRef.current.id,
           pendingSaveRef.current.title,
           pendingSaveRef.current.content,
-          pendingSaveRef.current.tags
+          pendingSaveRef.current.tags,
+          pendingSaveRef.current.isPinned,
+          pendingSaveRef.current.isArchived
         );
       }
     };
@@ -221,94 +246,190 @@ export function NotesPage() {
     setContent(newHtml);
   }, []);
 
-  // --- Create Note ---
-  const handleCreateNote = async () => {
-    try {
-      setSaveStatus('saving');
-      const newNote = await apiClient.createNote({
-        title: 'Untitled',
-        content: '<p></p>',
-        tags: selectedTag ? [selectedTag] : [],
-        isPinned: activeTab === 'pinned',
+  // --- Create Note Mutation ---
+  const createNoteMutation = useMutation({
+    mutationFn: (newNoteData: { title: string; content: string; tags: string[]; isPinned: boolean }) =>
+      apiClient.createNote(newNoteData),
+    onSuccess: (newNote) => {
+      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
+        if (!old) return [newNote];
+        return [newNote, ...old];
       });
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
 
-      setNotes((prev) => [newNote, ...prev]);
       setSelectedNoteId(newNote.id);
       setTitle(newNote.title);
-      setContent('<p></p>');
+      setContent(newNote.content || '<p></p>');
       setTags(newNote.tags || []);
       setIsPinned(newNote.isPinned);
       setIsArchived(false);
       setSaveStatus('saved');
-      fetchTags();
-    } catch (err) {
+    },
+    onError: (err) => {
       console.error('Failed to create note:', err);
       setSaveStatus('error');
-    }
+    },
+  });
+
+  const handleCreateNote = () => {
+    createNoteMutation.mutate({
+      title: 'Untitled',
+      content: '<p></p>',
+      tags: selectedTag ? [selectedTag] : [],
+      isPinned: activeTab === 'pinned',
+    });
   };
 
-  // --- Toggle Pin ---
-  const handleTogglePin = async (e?: React.MouseEvent, noteId?: string) => {
-    e?.stopPropagation();
-    const targetId = noteId || selectedNoteId;
-    if (!targetId) return;
+  // --- Toggle Pin Mutation ---
+  const pinMutation = useMutation({
+    mutationFn: (targetId: string) => apiClient.togglePinNote(targetId),
+    onMutate: async (targetId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['notes'] });
+      const previousNotes = queryClient.getQueryData<Note[]>(notesQueryKey);
 
-    try {
-      const updated = await apiClient.togglePinNote(targetId);
-      setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
-      if (targetId === selectedNoteId) {
+      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
+        if (!old) return [];
+        if (activeTab === 'pinned') {
+          return old.filter((n) => n.id !== targetId);
+        }
+        const updatedList = old.map((n) =>
+          n.id === targetId ? { ...n, isPinned: !n.isPinned } : n
+        );
+        return [...updatedList].sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return 0;
+        });
+      });
+
+      return { previousNotes };
+    },
+    onError: (_err, _targetId, context) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(notesQueryKey, context.previousNotes);
+      }
+    },
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      if (selectedNoteId === updated.id) {
         setIsPinned(updated.isPinned);
       }
-    } catch (err) {
-      console.error('Failed to toggle pin:', err);
-    }
-  };
+    },
+  });
 
-  // --- Toggle Archive ---
-  const handleToggleArchive = async (e?: React.MouseEvent, noteId?: string) => {
+  const handleTogglePin = (e?: React.MouseEvent, noteId?: string) => {
     e?.stopPropagation();
     const targetId = noteId || selectedNoteId;
     if (!targetId) return;
+    pinMutation.mutate(targetId);
+  };
 
-    try {
-      const updated = await apiClient.toggleArchiveNote(targetId);
-      if (activeTab === 'all' || (activeTab === 'archived' && updated.isArchived)) {
-        setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
-      } else {
-        setNotes((prev) => prev.filter((n) => n.id !== targetId));
-        if (targetId === selectedNoteId) {
-          const remaining = notes.filter((n) => n.id !== targetId);
-          const firstRemaining = remaining[0];
-          setSelectedNoteId(firstRemaining ? firstRemaining.id : null);
+  // --- Toggle Archive Mutation (Fixes instant disappearance in UI) ---
+  const archiveMutation = useMutation({
+    mutationFn: (targetId: string) => apiClient.toggleArchiveNote(targetId),
+    onMutate: async (targetId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['notes'] });
+      const previousNotes = queryClient.getQueryData<Note[]>(notesQueryKey);
+
+      // Optimistically update:
+      // When in 'all' (active notes) or 'pinned', an archived note must disappear immediately!
+      // When in 'archived', an unarchived note must disappear immediately!
+      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
+        if (!old) return [];
+        if (activeTab === 'all' || activeTab === 'pinned') {
+          return old.filter((n) => n.id !== targetId);
         }
+        if (activeTab === 'archived') {
+          return old.filter((n) => n.id !== targetId);
+        }
+        return old.map((n) => (n.id === targetId ? { ...n, isArchived: !n.isArchived } : n));
+      });
+
+      // Advance selectedNoteId to another note if current note was archived/unarchived
+      if (selectedNoteId === targetId) {
+        const remaining = (previousNotes || []).filter((n) => n.id !== targetId);
+        setSelectedNoteId(remaining[0]?.id || null);
       }
-      if (targetId === selectedNoteId) {
+
+      return { previousNotes };
+    },
+    onError: (_err, _targetId, context) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(notesQueryKey, context.previousNotes);
+      }
+    },
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      if (selectedNoteId === updated.id) {
         setIsArchived(updated.isArchived);
       }
-    } catch (err) {
-      console.error('Failed to toggle archive:', err);
-    }
+    },
+  });
+
+  const handleToggleArchive = (e?: React.MouseEvent, noteId?: string) => {
+    e?.stopPropagation();
+    const targetId = noteId || selectedNoteId;
+    if (!targetId) return;
+    archiveMutation.mutate(targetId);
   };
 
-  // --- Delete Note ---
-  const handleDeleteNote = async (noteId: string) => {
-    try {
-      await apiClient.deleteNote(noteId);
-      const remaining = notes.filter((n) => n.id !== noteId);
-      setNotes(remaining);
-      setDeleteConfirmId(null);
-      if (selectedNoteId === noteId) {
-        const firstRemaining = remaining[0];
-        setSelectedNoteId(firstRemaining ? firstRemaining.id : null);
+  // --- Delete Note Mutation ---
+  const deleteMutation = useMutation({
+    mutationFn: (targetId: string) => apiClient.deleteNote(targetId),
+    onMutate: async (targetId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['notes'] });
+      const previousNotes = queryClient.getQueryData<Note[]>(notesQueryKey);
+
+      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
+        if (!old) return [];
+        return old.filter((n) => n.id !== targetId);
+      });
+
+      if (selectedNoteId === targetId) {
+        const remaining = (previousNotes || []).filter((n) => n.id !== targetId);
+        setSelectedNoteId(remaining[0]?.id || null);
       }
-      fetchTags();
-    } catch (err) {
-      console.error('Failed to delete note:', err);
-    }
+
+      setDeleteConfirmId(null);
+      return { previousNotes };
+    },
+    onError: (_err, _targetId, context) => {
+      if (context?.previousNotes) {
+        queryClient.setQueryData(notesQueryKey, context.previousNotes);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+    },
+  });
+
+  const handleDeleteNote = (noteId: string) => {
+    deleteMutation.mutate(noteId);
   };
 
-  // --- Tag Management ---
-  const handleAddTag = async (tagToAdd: string) => {
+  // --- Tag Mutations ---
+  const updateTagsMutation = useMutation({
+    mutationFn: ({ noteId, nextTags }: { noteId: string; nextTags: string[] }) =>
+      apiClient.updateNote(noteId, {
+        title,
+        content,
+        tags: nextTags,
+        isPinned,
+        isArchived,
+      }),
+    onSuccess: (updated) => {
+      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
+        if (!old) return [];
+        return old.map((n) => (n.id === updated.id ? updated : n));
+      });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+    },
+  });
+
+  const handleAddTag = (tagToAdd: string) => {
     const clean = tagToAdd.trim().toLowerCase();
     if (!clean || tags.includes(clean) || !selectedNoteId) return;
 
@@ -317,39 +438,14 @@ export function NotesPage() {
     setNewTagText('');
     setShowTagInput(false);
 
-    try {
-      const updated = await apiClient.updateNote(selectedNoteId, {
-        title,
-        content,
-        tags: nextTags,
-        isPinned,
-        isArchived,
-      });
-      setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
-      fetchTags();
-    } catch (err) {
-      console.error('Failed to update tags:', err);
-    }
+    updateTagsMutation.mutate({ noteId: selectedNoteId, nextTags });
   };
 
-  const handleRemoveTag = async (tagToRemove: string) => {
+  const handleRemoveTag = (tagToRemove: string) => {
     if (!selectedNoteId) return;
     const nextTags = tags.filter((t) => t !== tagToRemove);
     setTags(nextTags);
-
-    try {
-      const updated = await apiClient.updateNote(selectedNoteId, {
-        title,
-        content,
-        tags: nextTags,
-        isPinned,
-        isArchived,
-      });
-      setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
-      fetchTags();
-    } catch (err) {
-      console.error('Failed to remove tag:', err);
-    }
+    updateTagsMutation.mutate({ noteId: selectedNoteId, nextTags });
   };
 
   // Content Statistics
