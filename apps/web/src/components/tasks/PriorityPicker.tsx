@@ -10,6 +10,7 @@ interface PriorityPickerProps {
   onChange: (priority: TaskPriority) => void;
   size?: 'sm' | 'md';
   className?: string;
+  iconOnly?: boolean;
 }
 
 const PRIORITIES: { value: TaskPriority; label: string }[] = [
@@ -24,6 +25,7 @@ export function PriorityPicker({
   onChange,
   size = 'md',
   className = '',
+  iconOnly = false,
 }: PriorityPickerProps) {
   const [open, setOpen] = useState(false);
 
@@ -37,16 +39,21 @@ export function PriorityPicker({
       <Popover.Trigger asChild>
         <button
           type="button"
+          title={`Priority: ${value.toLowerCase()}`}
           className={cn(
-            'inline-flex items-center gap-1.5 font-medium transition-all cursor-pointer border select-none',
-            'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 border-zinc-800 hover:border-zinc-700',
-            'focus:outline-none focus:ring-1 focus:ring-violet-500/50',
-            sizeClasses,
+            iconOnly
+              ? 'p-1 rounded-md hover:bg-zinc-800 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center'
+              : cn(
+                  'inline-flex items-center gap-1.5 font-medium transition-all cursor-pointer border select-none',
+                  'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 border-zinc-800 hover:border-zinc-700',
+                  'focus:outline-none focus:ring-1 focus:ring-violet-500/50',
+                  sizeClasses
+                ),
             className
           )}
         >
           <PriorityIcon priority={value} />
-          <span className="capitalize">{value.toLowerCase()}</span>
+          {!iconOnly && <span className="capitalize">{value.toLowerCase()}</span>}
         </button>
       </Popover.Trigger>
 

@@ -11,6 +11,8 @@ interface DatePickerPopoverProps {
   placeholder?: string;
   align?: 'start' | 'center' | 'end';
   className?: string;
+  buttonClassName?: string;
+  showClearButton?: boolean;
   size?: 'sm' | 'md';
 }
 
@@ -20,6 +22,8 @@ export function DatePickerPopover({
   placeholder = 'Due date',
   align = 'start',
   className = '',
+  buttonClassName = '',
+  showClearButton = true,
   size = 'md',
 }: DatePickerPopoverProps) {
   const [open, setOpen] = useState(false);
@@ -60,7 +64,8 @@ export function DatePickerPopover({
               'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 border-zinc-800 hover:border-zinc-700',
               'focus:outline-none focus:ring-1 focus:ring-violet-500/50',
               date && 'text-violet-300 border-violet-500/30 bg-violet-950/20',
-              sizeClasses
+              sizeClasses,
+              buttonClassName
             )}
           >
             <CalendarIcon
@@ -73,7 +78,7 @@ export function DatePickerPopover({
           </button>
         </Popover.Trigger>
 
-        {date && (
+        {date && showClearButton && (
           <button
             type="button"
             onClick={(e) => {
