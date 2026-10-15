@@ -19,7 +19,6 @@ import {
   ChevronRight,
   ChevronDown,
   CheckSquare,
-  Square,
   ArrowUpRight,
   AlertCircle,
 } from 'lucide-react';
@@ -1218,12 +1217,17 @@ export function NotesPage() {
                   >
                     <button
                       onClick={() => toggleLinkedTaskMutation.mutate(task.id)}
-                      className="mt-0.5 text-zinc-500 hover:text-violet-400 cursor-pointer flex-shrink-0"
+                      title={task.isCompleted ? 'Mark incomplete' : 'Mark complete'}
+                      className="mt-0.5 cursor-pointer flex-shrink-0 transition-transform active:scale-95"
                     >
                       {task.isCompleted ? (
-                        <CheckSquare className="w-4 h-4 text-emerald-400 fill-emerald-500/20" />
+                        <div className="w-4 h-4 rounded-md bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-sm shadow-violet-600/40 border border-violet-500">
+                          <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+                        </div>
                       ) : (
-                        <Square className="w-4 h-4 text-zinc-500 hover:text-zinc-300" />
+                        <div className="w-4 h-4 rounded-md bg-zinc-900 border border-zinc-700/80 hover:border-violet-500/70 hover:bg-violet-500/10 transition-all flex items-center justify-center">
+                          <Check className="w-2.5 h-2.5 text-transparent hover:text-violet-400/40 transition-colors stroke-[2.5]" />
+                        </div>
                       )}
                     </button>
                     <div className="flex-1 min-w-0">

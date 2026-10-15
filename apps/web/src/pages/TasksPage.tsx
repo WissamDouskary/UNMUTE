@@ -9,7 +9,6 @@ import {
   X,
   ArrowUpRight,
   Loader2,
-  Circle,
   Check,
   ListTodo,
 } from 'lucide-react';
@@ -382,14 +381,16 @@ export function TasksPage() {
                       <button
                         onClick={() => toggleMutation.mutate(task.id)}
                         title={task.isCompleted ? 'Mark incomplete' : 'Mark complete'}
-                        className="text-zinc-600 hover:text-zinc-300 cursor-pointer flex-shrink-0 transition-colors"
+                        className="cursor-pointer flex-shrink-0 transition-transform active:scale-95"
                       >
                         {task.isCompleted ? (
-                          <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-400">
-                            <Check className="w-2.5 h-2.5" />
+                          <div className="w-4 h-4 rounded-md bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-sm shadow-violet-600/40 border border-violet-500">
+                            <Check className="w-2.5 h-2.5 stroke-[2.5]" />
                           </div>
                         ) : (
-                          <Circle className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400" />
+                          <div className="w-4 h-4 rounded-md bg-zinc-900 border border-zinc-700/80 group-hover:border-violet-500/70 group-hover:bg-violet-500/10 transition-all flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-transparent group-hover:text-violet-400/40 transition-colors stroke-[2.5]" />
+                          </div>
                         )}
                       </button>
 
