@@ -30,9 +30,11 @@
     "@tiptap/starter-kit": "^3.32.0",
     "@tiptap/suggestion": "^3.32.0",
     "@unmute/api-client": "*",
+    "date-fns": "^4.4.0",
     "lowlight": "^3.3.0",
     "lucide-react": "^1.57.0",
     "react": "^19.1.0",
+    "react-day-picker": "^10.0.2",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.5.0",
     "tiptap-text-direction": "^0.5.0"
