@@ -34,8 +34,12 @@ public record AiProperties(
             @DefaultValue("PT120S") Duration readTimeout,
             @DefaultValue("PT10M") Duration transcriptionTimeout
     ) {
+        public OpenAi {
+            apiKey = sanitizeKey(apiKey);
+        }
+
         public boolean hasKey() {
-            return apiKey != null && !apiKey.isBlank();
+            return !apiKey.isBlank();
         }
 
         @Override
@@ -55,8 +59,12 @@ public record AiProperties(
             @DefaultValue("PT10S") Duration connectTimeout,
             @DefaultValue("PT180S") Duration readTimeout
     ) {
+        public Anthropic {
+            apiKey = sanitizeKey(apiKey);
+        }
+
         public boolean hasKey() {
-            return apiKey != null && !apiKey.isBlank();
+            return !apiKey.isBlank();
         }
 
         @Override
@@ -78,8 +86,12 @@ public record AiProperties(
             @DefaultValue("PT120S") Duration readTimeout,
             @DefaultValue("PT10M") Duration transcriptionTimeout
     ) {
+        public Gemini {
+            apiKey = sanitizeKey(apiKey);
+        }
+
         public boolean hasKey() {
-            return apiKey != null && !apiKey.isBlank();
+            return !apiKey.isBlank();
         }
 
         @Override
@@ -98,6 +110,22 @@ public record AiProperties(
             @DefaultValue("120") int minChars,
             @DefaultValue("5") int maxTags
     ) {
+    }
+
+    /** Trim whitespace and surrounding quotes so a .env value like {@code "AIza..."} still authenticates. */
+    static String sanitizeKey(String key) {
+        if (key == null) {
+            return "";
+        }
+        String value = key.strip();
+        if (value.length() >= 2) {
+            char start = value.charAt(0);
+            char end = value.charAt(value.length() - 1);
+            if ((start == '"' && end == '"') || (start == '\'' && end == '\'')) {
+                value = value.substring(1, value.length() - 1).strip();
+            }
+        }
+        return value;
     }
 
     static String mask(String key) {

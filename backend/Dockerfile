@@ -1,12 +1,16 @@
-# ---- Runtime stage ----
+# Compile inside the image so `docker compose up --build` always ships current source.
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+WORKDIR /build
+COPY pom.xml .
+COPY src ./src
+RUN mvn -B -DskipTests package
+
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-# Copy the built JAR from target directory
-COPY target/unmute-backend-0.1.0-SNAPSHOT.jar app.jar
+COPY --from=build /build/target/unmute-backend-0.1.0-SNAPSHOT.jar app.jar
 
-# Create uploads directory and set permissions
 RUN groupadd -r unmute && useradd -r -g unmute unmute \
     && mkdir -p /app/uploads && chown -R unmute:unmute /app
 USER unmute

@@ -2,6 +2,8 @@ package com.unmute.source.service;
 
 import com.unmute.ai.client.AiProviderException;
 import com.unmute.ai.client.GeminiClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,6 +13,8 @@ import java.util.Map;
 
 /** Speech-to-text through Gemini {@code generateContent} with inline audio. */
 public class GeminiTranscriptionService implements TranscriptionService {
+
+    private static final Logger log = LoggerFactory.getLogger(GeminiTranscriptionService.class);
 
     static final long MAX_BYTES = 20L * 1024 * 1024;
 
@@ -48,7 +52,9 @@ public class GeminiTranscriptionService implements TranscriptionService {
             throw new AiProviderException("Gemini", 0, false, "The uploaded audio file could not be read.", e);
         }
 
-        GeminiClient.Transcript transcript = client.transcribe(file, mimeType(fileType, originalName));
+        String mime = mimeType(fileType, originalName);
+        log.info("Transcribing {} via Gemini {} ({})", originalName, client.properties().transcriptionModel(), mime);
+        GeminiClient.Transcript transcript = client.transcribe(file, mime);
         int duration = transcript.durationSeconds() != null ? (int) Math.round(transcript.durationSeconds()) : 0;
         return new TranscriptionResult(transcript.text().strip(), duration);
     }

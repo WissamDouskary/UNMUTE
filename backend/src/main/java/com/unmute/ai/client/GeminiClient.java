@@ -127,9 +127,11 @@ public class GeminiClient implements LlmClient {
         }
 
         ObjectNode body = mapper.createObjectNode();
-        ArrayNode parts = body.putArray("contents").addObject().putArray("parts");
+        ObjectNode contents = body.putArray("contents").addObject().put("role", "user");
+        ArrayNode parts = contents.putArray("parts");
         parts.addObject().put("text", TRANSCRIBE_PROMPT);
         parts.addObject().putObject("inlineData").put("mimeType", mimeType).put("data", encoded);
+        body.putObject("generationConfig").put("temperature", 0).put("maxOutputTokens", 8192);
 
         JsonNode response = call("Gemini", () -> nativeRest.post()
                 .uri("/models/{model}:generateContent", properties.transcriptionModel())
@@ -154,7 +156,11 @@ public class GeminiClient implements LlmClient {
         for (JsonNode part : candidate.path("content").path("parts")) {
             text.append(part.path("text").asText(""));
         }
-        return new Transcript(text.toString(), null);
+        String transcript = text.toString().strip();
+        if (transcript.isBlank()) {
+            throw new AiProviderException(PROVIDER, 200, true, "Gemini returned an empty transcript.");
+        }
+        return new Transcript(transcript, null);
     }
 
     public record Transcript(String text, Double durationSeconds) {}

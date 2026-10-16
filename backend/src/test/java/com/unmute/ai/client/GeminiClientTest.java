@@ -95,8 +95,10 @@ class GeminiClientTest {
         server.expect(requestTo("https://generativelanguage.test/v1beta/models/gemini-2.5-flash:generateContent"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("x-goog-api-key", KEY))
+                .andExpect(jsonPath("$.contents[0].role").value("user"))
                 .andExpect(jsonPath("$.contents[0].parts[1].inlineData.mimeType").value("audio/webm"))
                 .andExpect(jsonPath("$.contents[0].parts[1].inlineData.data").value(encoded))
+                .andExpect(jsonPath("$.generationConfig.maxOutputTokens").value(8192))
                 .andRespond(withSuccess("""
                         {"candidates":[{"finishReason":"STOP","content":{"parts":[{"text":"Hello world."}]}}]}
                         """, MediaType.APPLICATION_JSON));

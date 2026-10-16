@@ -101,16 +101,19 @@ public class AiProviderConfiguration {
         String choice = normalize(properties.transcriptionProvider());
         return switch (choice) {
             case "auto" -> {
-                if (clients.openAi() != null) {
-                    log.info("Transcription: openai/{}", clients.openAi().properties().transcriptionModel());
-                    yield new OpenAiTranscriptionService(clients.openAi());
-                }
+                // Never silently return canned mock transcripts in auto: a missing key must fail startup
+                // instead of inventing speech. Tests opt in with AI_TRANSCRIPTION_PROVIDER=mock.
                 if (clients.gemini() != null) {
                     log.info("Transcription: gemini/{}", clients.gemini().properties().transcriptionModel());
                     yield new GeminiTranscriptionService(clients.gemini());
                 }
-                log.info("Transcription: offline mock with canned transcripts (set OPENAI_API_KEY or GEMINI_API_KEY for real speech-to-text)");
-                yield new MockTranscriptionProvider();
+                if (clients.openAi() != null) {
+                    log.info("Transcription: openai/{}", clients.openAi().properties().transcriptionModel());
+                    yield new OpenAiTranscriptionService(clients.openAi());
+                }
+                throw new IllegalStateException(
+                        "unmute.ai.transcription-provider=auto requires GEMINI_API_KEY or OPENAI_API_KEY. "
+                                + "Set AI_TRANSCRIPTION_PROVIDER=mock only for offline tests.");
             }
             case "openai" -> {
                 OpenAiClient openAi = require(clients.openAi(), "unmute.ai.transcription-provider=openai", "OPENAI_API_KEY");

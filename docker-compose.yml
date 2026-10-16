@@ -42,7 +42,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-only-secret-that-is-at-least-64-characters-long-replace-in-production!!}
       JWT_ACCESS_TOKEN_EXPIRY: ${JWT_ACCESS_TOKEN_EXPIRY:-900}
       JWT_REFRESH_TOKEN_EXPIRY: ${JWT_REFRESH_TOKEN_EXPIRY:-604800}
-      # AI providers: set the keys in .env (never commit it). Empty keys fall back to offline mocks.
+      # AI providers: set the keys in .env (never commit it). Transcription requires GEMINI_API_KEY or OPENAI_API_KEY.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
