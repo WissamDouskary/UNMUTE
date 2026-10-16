@@ -23,6 +23,7 @@ import { CustomSelect, SelectOption } from '../components/ui/CustomSelect';
 import { PriorityPicker } from '../components/tasks/PriorityPicker';
 import { DatePickerPopover } from '../components/ui/DatePickerPopover';
 import { QuickAddDialog } from '../components/tasks/QuickAddDialog';
+import { TaskDetailDrawer } from '../components/tasks/TaskDetailDrawer';
 import { cn } from '../lib/utils';
 
 type TaskFilterStatus = 'all' | 'pending' | 'completed';
@@ -56,6 +57,7 @@ export function TasksPage() {
 
   // Delete confirm state
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   // Global 'C' shortcut to trigger Quick Add modal
   useEffect(() => {
@@ -382,8 +384,9 @@ export function TasksPage() {
                   return (
                     <div
                       key={task.id}
+                      onClick={() => setSelectedTask(task)}
                       className={cn(
-                        'group relative flex items-center gap-2.5 px-2 py-2 border-b border-zinc-850/40 transition-colors select-none',
+                        'group relative flex items-center gap-2.5 px-2 py-2 border-b border-zinc-850/40 transition-colors select-none cursor-pointer',
                         task.isCompleted
                           ? 'text-zinc-500 hover:bg-zinc-900/30'
                           : 'hover:bg-zinc-900/50 text-zinc-200'
@@ -391,7 +394,10 @@ export function TasksPage() {
                     >
                       {/* Linear Checkbox Toggle */}
                       <button
-                        onClick={() => toggleMutation.mutate(task.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleMutation.mutate(task.id);
+                        }}
                         title={task.isCompleted ? 'Mark incomplete' : 'Mark complete'}
                         className="cursor-pointer flex-shrink-0 transition-transform active:scale-95"
                       >
@@ -407,16 +413,18 @@ export function TasksPage() {
                       </button>
 
                       {/* Linear Priority Icon (Clickable Popover for inline update) */}
-                      <PriorityPicker
-                        value={task.priority}
-                        onChange={(newPriority) =>
-                          updateMutation.mutate({
-                            taskId: task.id,
-                            data: { priority: newPriority },
-                          })
-                        }
-                        iconOnly
-                      />
+                      <div onClick={(event) => event.stopPropagation()}>
+                        <PriorityPicker
+                          value={task.priority}
+                          onChange={(newPriority) =>
+                            updateMutation.mutate({
+                              taskId: task.id,
+                              data: { priority: newPriority },
+                            })
+                          }
+                          iconOnly
+                        />
+                      </div>
 
                       {/* Task Title & Description */}
                       <div className="flex-1 min-w-0 flex items-center gap-2">
@@ -442,7 +450,10 @@ export function TasksPage() {
                       {/* Linked Note Badge */}
                       {task.noteId && (
                         <button
-                          onClick={() => navigate(`/notes?noteId=${encodeURIComponent(task.noteId!)}`)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(`/notes?noteId=${encodeURIComponent(task.noteId!)}`);
+                          }}
                           title="Open parent note"
                           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-900/80 hover:bg-violet-950/30 border border-zinc-800/60 hover:border-violet-500/30 text-[10px] text-zinc-400 hover:text-violet-300 transition-all cursor-pointer flex-shrink-0"
                         >
@@ -455,6 +466,7 @@ export function TasksPage() {
                       )}
 
                       {/* Due Date Indicator (Clickable Popover for inline rescheduling) */}
+                      <div onClick={(event) => event.stopPropagation()}>
                       <DatePickerPopover
                         date={dueDateObj}
                         onChange={(newDate) =>
@@ -468,11 +480,15 @@ export function TasksPage() {
                         buttonClassName="border-0 bg-transparent hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 h-6 px-1 text-[11px]"
                         showClearButton={false}
                       />
+                      </div>
 
                       {/* Quick-action buttons (ONLY shown on row hover) */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                         <button
-                          onClick={() => setDeleteConfirmId(task.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setDeleteConfirmId(task.id);
+                          }}
                           title="Delete task"
                           className="p-1 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
                         >
@@ -491,6 +507,8 @@ export function TasksPage() {
       {/* =========================================================================
           QUICK ADD MODAL (Command Palette Style Dialog via Radix)
       ========================================================================== */}
+      <TaskDetailDrawer task={selectedTask} onClose={() => setSelectedTask(null)} />
+
       <QuickAddDialog
         open={isQuickAddOpen}
         onOpenChange={setIsQuickAddOpen}

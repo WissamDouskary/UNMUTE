@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight, CheckSquare, FileText, Loader2, Radio } from 'lucide-react';
@@ -6,6 +6,7 @@ import { apiClient } from '@unmute/api-client';
 import type { Note, Source, Task } from '@unmute/api-client';
 import { useAuth } from '../context/AuthContext';
 import { OPEN_PALETTE_EVENT } from '../components/CommandPalette';
+import { TaskDetailDrawer } from '../components/tasks/TaskDetailDrawer';
 
 function parseDue(value: string): Date {
   const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -45,6 +46,7 @@ function relativeTime(iso?: string): string {
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const name = user?.displayName || user?.email?.split('@')[0] || 'there';
 
   const notesQuery = useQuery({
@@ -121,7 +123,7 @@ export const DashboardPage: React.FC = () => {
           ) : (
             <ul className="divide-y divide-zinc-800/80">
               {upcoming.map((task) => (
-                <TaskRow key={task.id} task={task} />
+                <TaskRow key={task.id} task={task} onOpen={setSelectedTask} />
               ))}
             </ul>
           )}
@@ -141,6 +143,7 @@ export const DashboardPage: React.FC = () => {
           )}
         </Widget>
       </div>
+      <TaskDetailDrawer task={selectedTask} onClose={() => setSelectedTask(null)} />
     </div>
   );
 };
@@ -235,20 +238,21 @@ function NoteRow({ note }: { note: Note }) {
   );
 }
 
-function TaskRow({ task }: { task: Task }) {
+function TaskRow({ task, onOpen }: { task: Task; onOpen: (task: Task) => void }) {
   const label = dueLabel(task);
   return (
     <li>
-      <Link
-        to={task.noteId ? `/notes?noteId=${encodeURIComponent(task.noteId)}` : '/tasks'}
-        className="flex items-center gap-3 py-2.5 hover:bg-zinc-900/50 -mx-2 px-2 rounded-lg"
+      <button
+        type="button"
+        onClick={() => onOpen(task)}
+        className="flex w-full items-center gap-3 py-2.5 hover:bg-zinc-900/50 -mx-2 px-2 rounded-lg cursor-pointer text-start"
       >
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${label.text === 'Overdue' ? 'bg-red-400' : label.text === 'Today' ? 'bg-amber-400' : 'bg-zinc-600'}`} />
         <p dir="auto" className="min-w-0 flex-1 text-sm text-zinc-200 truncate text-start">
           {task.title}
         </p>
         <span className={`text-[11px] shrink-0 ${label.tone}`}>{label.text}</span>
-      </Link>
+      </button>
     </li>
   );
 }
