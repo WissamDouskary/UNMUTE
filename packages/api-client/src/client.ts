@@ -28,6 +28,9 @@ import type {
   SemanticSearchRequest,
   AskRequest,
   AskResponse,
+  ChatSessionSummary,
+  ChatSessionDetail,
+  ChatTurn,
   GraphTopology,
   GraphTopologyParams,
   LiveEvent,
@@ -490,6 +493,26 @@ export class ApiClient {
     const resolvedLimit = typeof queryOrRequest === 'object' && queryOrRequest.limit !== undefined ? queryOrRequest.limit : limit;
     const encoded = encodeURIComponent(query);
     return this.get<SemanticSearchResult[]>(`/api/v1/search/semantic?q=${encoded}&limit=${resolvedLimit}`);
+  }
+
+  listChatSessions(): Promise<ChatSessionSummary[]> {
+    return this.get<ChatSessionSummary[]>('/api/v1/chat/sessions');
+  }
+
+  createChatSession(): Promise<ChatSessionSummary> {
+    return this.post<ChatSessionSummary>('/api/v1/chat/sessions');
+  }
+
+  getChatSession(id: string): Promise<ChatSessionDetail> {
+    return this.get<ChatSessionDetail>(`/api/v1/chat/sessions/${id}`);
+  }
+
+  deleteChatSession(id: string): Promise<void> {
+    return this.delete<void>(`/api/v1/chat/sessions/${id}`);
+  }
+
+  sendChatMessage(sessionId: string, question: string, topK = 5): Promise<ChatTurn> {
+    return this.post<ChatTurn>(`/api/v1/chat/sessions/${sessionId}/messages`, { question, topK });
   }
 
   askAi(questionOrRequest: string | AskRequest, topK?: number): Promise<AskResponse> {

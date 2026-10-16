@@ -206,6 +206,35 @@ export interface AskResponse {
   citations: Citation[];
 }
 
+export interface ChatSessionSummary {
+  id: string;
+  title: string;
+  updatedAt: string;
+  preview: string | null;
+}
+
+export interface ChatThreadMessage {
+  id: string;
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+  citations: Citation[];
+  createdAt: string;
+}
+
+export interface ChatSessionDetail {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: ChatThreadMessage[];
+}
+
+export interface ChatTurn {
+  session: ChatSessionSummary;
+  userMessage: ChatThreadMessage;
+  assistantMessage: ChatThreadMessage;
+}
+
 // --- Knowledge Graph ---
 
 export type GraphNodeType = 'NOTE' | 'TASK' | 'SOURCE' | 'TAG';

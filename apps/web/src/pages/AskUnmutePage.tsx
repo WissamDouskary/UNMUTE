@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { apiClient, AskResponse, Citation, SemanticSearchResult } from '@unmute/api-client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient, ChatThreadMessage, Citation, SemanticSearchResult } from '@unmute/api-client';
 import {
   Sparkles,
   Send,
@@ -9,7 +9,7 @@ import {
   User as UserIcon,
   FileText,
   ExternalLink,
-  RotateCcw,
+  Plus,
   Search,
   MessageSquare,
   Clock,
@@ -17,6 +17,7 @@ import {
   Database,
   Tag,
   Zap,
+  Trash2,
 } from 'lucide-react';
 
 interface ChatMessage {
@@ -57,21 +58,46 @@ const stripHtmlTags = (html: string | null | undefined): string => {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 };
 
+const WELCOME: ChatMessage = {
+  id: 'welcome',
+  sender: 'ai',
+  text: "Hello! I am **Ask UNMUTE**, your neural second brain assistant. I'm connected to your notes, tasks, and audio transcripts via **pgvector semantic search**. Ask me anything, and I'll synthesize answers grounded strictly in your personal data.",
+  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+};
+
+function clock(iso?: string): string {
+  const date = iso ? new Date(iso) : new Date();
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function toLocal(message: ChatThreadMessage): ChatMessage {
+  return {
+    id: message.id,
+    sender: message.role === 'USER' ? 'user' : 'ai',
+    text: message.content,
+    citations: message.citations ?? [],
+    timestamp: clock(message.createdAt),
+    mode: 'rag',
+  };
+}
+
 export const AskUnmutePage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'chat' | 'search'>('chat');
   const [inputQuery, setInputQuery] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
-      id: 'welcome-1',
-      sender: 'ai',
-      text: "Hello! I am **Ask UNMUTE**, your neural second brain assistant. I'm connected to your notes, tasks, and audio transcripts via **pgvector semantic search**. Ask me anything, and I'll synthesize answers grounded strictly in your personal data.",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
+  const [isAsking, setIsAsking] = useState(false);
+  const loadToken = useRef(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const sessionsQuery = useQuery({
+    queryKey: ['chat-sessions'],
+    queryFn: () => apiClient.listChatSessions(),
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -81,30 +107,39 @@ export const AskUnmutePage: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Mutation for RAG Chat Question
-  const askMutation = useMutation({
-    mutationFn: (question: string) => apiClient.askAi(question, 5),
-    onSuccess: (data: AskResponse) => {
-      const aiMessage: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: data.answer,
-        citations: data.citations,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        mode: 'rag',
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-    },
-    onError: (err: any) => {
-      const errorMessage: ChatMessage = {
-        id: `err-${Date.now()}`,
-        sender: 'ai',
-        text: `⚠️ **Unable to synthesize response**: ${err?.message || 'Server error occurred while connecting to RAG pipeline'}. Please verify backend status and try again.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    },
-  });
+  const startNewChat = () => {
+    loadToken.current += 1;
+    setActiveSessionId(null);
+    setActiveTab('chat');
+    setMessages([{ ...WELCOME, timestamp: clock() }]);
+  };
+
+  const openSession = async (id: string) => {
+    const token = ++loadToken.current;
+    setActiveSessionId(id);
+    setActiveTab('chat');
+    try {
+      const detail = await apiClient.getChatSession(id);
+      if (loadToken.current !== token) return;
+      setMessages(detail.messages.length > 0 ? detail.messages.map(toLocal) : [{ ...WELCOME, timestamp: clock() }]);
+    } catch (err: any) {
+      if (loadToken.current !== token) return;
+      setMessages([
+        {
+          id: `err-${Date.now()}`,
+          sender: 'ai',
+          text: `Could not open that thread. ${err?.message || ''}`.trim(),
+          timestamp: clock(),
+        },
+      ]);
+    }
+  };
+
+  const deleteSession = async (id: string) => {
+    await apiClient.deleteChatSession(id);
+    if (activeSessionId === id) startNewChat();
+    await queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
+  };
 
   // Mutation for Direct Semantic Search
   const searchMutation = useMutation({
@@ -133,27 +168,54 @@ export const AskUnmutePage: React.FC = () => {
     },
   });
 
-  const isSubmitting = askMutation.isPending || searchMutation.isPending;
+  const isSubmitting = isAsking || searchMutation.isPending;
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const query = inputQuery.trim();
     if (!query || isSubmitting) return;
 
-    // Append user message
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
       text: query,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: clock(),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [...prev.filter((message) => message.id !== 'welcome'), userMsg]);
     setInputQuery('');
 
-    if (activeTab === 'chat') {
-      askMutation.mutate(query);
-    } else {
+    if (activeTab === 'search') {
       searchMutation.mutate(query);
+      return;
+    }
+
+    setIsAsking(true);
+    try {
+      let sessionId = activeSessionId;
+      if (!sessionId) {
+        const created = await apiClient.createChatSession();
+        sessionId = created.id;
+        setActiveSessionId(created.id);
+      }
+      const turn = await apiClient.sendChatMessage(sessionId, query, 5);
+      setMessages((prev) => [
+        ...prev.filter((message) => message.id !== userMsg.id && message.id !== 'welcome'),
+        toLocal(turn.userMessage),
+        toLocal(turn.assistantMessage),
+      ]);
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `err-${Date.now()}`,
+          sender: 'ai',
+          text: `⚠️ **Unable to synthesize response**: ${err?.message || 'Server error occurred while connecting to RAG pipeline'}. Please verify backend status and try again.`,
+          timestamp: clock(),
+        },
+      ]);
+    } finally {
+      setIsAsking(false);
+      await queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
     }
   };
 
@@ -164,23 +226,15 @@ export const AskUnmutePage: React.FC = () => {
     }
   };
 
-  const handleClearHistory = () => {
-    setMessages([
-      {
-        id: `welcome-${Date.now()}`,
-        sender: 'ai',
-        text: "Thread reset. Ask me any question or switch to Semantic Search to query your notes by vector similarity.",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      },
-    ]);
+  const handleCitationClick = (noteId: string) => {
+    navigate(`/notes?noteId=${encodeURIComponent(noteId)}`);
   };
 
-  const handleCitationClick = (noteId: string) => {
-    navigate(`/notes?noteId=${noteId}`);
-  };
+  const sessions = sessionsQuery.data ?? [];
+  const isFreshThread = activeSessionId === null && messages.length === 1 && messages[0]?.id === 'welcome';
 
   // Helper to render simple markdown formatting (bold, bullet lines, inline code)
-  const renderFormattedText = (content: string) => {
+  const renderFormattedText = (content: string, citations: Citation[] = []) => {
     const lines = content.split('\n');
     return (
       <div className="space-y-2 text-sm leading-relaxed text-zinc-200">
@@ -193,32 +247,45 @@ export const AskUnmutePage: React.FC = () => {
             return (
               <div key={idx} className="flex items-start gap-2.5 ml-1">
                 <span className="text-violet-400 mt-1.5 h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />
-                <span>{renderInlineMarkdown(bulletText)}</span>
+                <span>{renderInlineMarkdown(bulletText, citations)}</span>
               </div>
             );
           }
 
-          return <p key={idx}>{renderInlineMarkdown(line)}</p>;
+          return <div key={idx}>{renderInlineMarkdown(line, citations)}</div>;
         })}
       </div>
     );
   };
 
-  const renderInlineMarkdown = (text: string) => {
-    // Replace [Note: xxx] with highlighted inline tags
+  const renderInlineMarkdown = (text: string, citations: Citation[] = []) => {
     const parts = text.split(/(\[Note:\s*[^\]]+\]|\*\*[^*]+\*\*|`[^`]+`)/g);
 
     return parts.map((part, i) => {
       if (part.startsWith('[Note:') && part.endsWith(']')) {
-        const title = part.replace(/^\[Note:\s*/, '').replace(/\]$/, '');
+        const title = part.replace(/^\[Note:\s*/, '').replace(/\]$/, '').trim();
+        const citation = citations.find((item) => item.title.trim().toLowerCase() === title.toLowerCase());
+        const chipClass =
+          'inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded-md bg-violet-950/70 border border-violet-500/30 text-violet-200 text-xs font-medium align-baseline';
+        if (!citation) {
+          return (
+            <span key={i} className={chipClass}>
+              <FileText className="w-3 h-3 text-violet-400" />
+              {title}
+            </span>
+          );
+        }
         return (
-          <span
+          <button
             key={i}
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded bg-violet-950/70 border border-violet-500/30 text-violet-300 text-xs font-mono font-medium shadow-sm"
+            type="button"
+            onClick={() => handleCitationClick(citation.noteId)}
+            className={`${chipClass} cursor-pointer hover:border-violet-400 hover:bg-violet-900/50`}
+            title={`Open ${citation.title}`}
           >
             <FileText className="w-3 h-3 text-violet-400" />
-            Note: {title}
-          </span>
+            {title}
+          </button>
         );
       }
       if (part.startsWith('**') && part.endsWith('**')) {
@@ -240,7 +307,70 @@ export const AskUnmutePage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#09090b] text-zinc-100 min-h-0">
+    <div className="flex h-full min-h-0 bg-[#09090b] text-zinc-100">
+      <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-zinc-800/80 bg-zinc-950">
+        <div className="p-3">
+          <button
+            type="button"
+            onClick={startNewChat}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-zinc-600 cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New chat
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5">
+          {sessions.length === 0 ? (
+            <p className="px-2 py-6 text-center text-[11px] text-zinc-500">No saved threads yet</p>
+          ) : (
+            sessions.map((session) => (
+              <div
+                key={session.id}
+                className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 ${
+                  session.id === activeSessionId ? 'bg-zinc-800/80' : 'hover:bg-zinc-900'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => openSession(session.id)}
+                  className="min-w-0 flex-1 text-start cursor-pointer"
+                >
+                  <p dir="auto" className="truncate text-xs text-zinc-200">
+                    {session.title}
+                  </p>
+                  <p className="truncate text-[10px] text-zinc-500">{clock(session.updatedAt)}</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteSession(session.id)}
+                  aria-label={`Delete ${session.title}`}
+                  className="p-1 text-zinc-600 opacity-0 group-hover:opacity-100 hover:text-red-400 cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col h-full">
+      <div className="md:hidden flex gap-2 overflow-x-auto border-b border-zinc-800 px-3 py-2">
+        <button type="button" onClick={startNewChat} className="shrink-0 rounded-full border border-zinc-800 px-3 py-1 text-[11px] text-zinc-300 cursor-pointer">
+          New
+        </button>
+        {sessions.map((session) => (
+          <button
+            key={session.id}
+            type="button"
+            onClick={() => openSession(session.id)}
+            className={`shrink-0 max-w-[10rem] truncate rounded-full border px-3 py-1 text-[11px] cursor-pointer ${
+              session.id === activeSessionId ? 'border-violet-500/50 text-violet-200' : 'border-zinc-800 text-zinc-400'
+            }`}
+          >
+            {session.title}
+          </button>
+        ))}
+      </div>
       {/* Top Header / Mode Switcher */}
       <header className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-zinc-800/80 bg-zinc-950/60 backdrop-blur-md sticky top-0 z-10 shrink-0">
         <div className="flex items-center gap-3">
@@ -289,12 +419,12 @@ export const AskUnmutePage: React.FC = () => {
           </div>
 
           <button
-            onClick={handleClearHistory}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 border border-zinc-800 transition-colors"
-            title="Clear Chat History"
+            onClick={startNewChat}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 border border-zinc-800 transition-colors cursor-pointer"
+            title="Start a new chat"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Reset</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">New</span>
           </button>
         </div>
       </header>
@@ -332,7 +462,7 @@ export const AskUnmutePage: React.FC = () => {
                     : 'bg-zinc-900/90 border border-zinc-800/80 text-zinc-200 rounded-tl-sm shadow-[0_4px_20px_rgba(0,0,0,0.25)]'
                 }`}
               >
-                {renderFormattedText(message.text)}
+                {renderFormattedText(message.text, message.citations ?? [])}
               </div>
 
               {/* RAG Clickable Reference Chips (Crucial Requirement) */}
@@ -436,7 +566,7 @@ export const AskUnmutePage: React.FC = () => {
       </div>
 
       {/* Suggested Prompts (when only welcome message exists) */}
-      {messages.length === 1 && (
+      {isFreshThread && (
         <div className="px-6 py-2">
           <div className="max-w-4xl mx-auto">
             <div className="text-xs font-semibold text-zinc-400 mb-2 flex items-center gap-2">
@@ -510,6 +640,7 @@ export const AskUnmutePage: React.FC = () => {
             <span className="hidden sm:inline">Press Shift + Enter for new line</span>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
