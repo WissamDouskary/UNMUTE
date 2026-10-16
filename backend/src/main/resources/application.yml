@@ -79,9 +79,9 @@ unmute:
       api-key: ${GEMINI_API_KEY:}
       base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
       native-base-url: ${GEMINI_NATIVE_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
-      chat-model: ${GEMINI_CHAT_MODEL:gemini-2.5-flash}
+      chat-model: ${GEMINI_CHAT_MODEL:gemini-3.8-flash}
       embedding-model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
-      transcription-model: ${GEMINI_TRANSCRIPTION_MODEL:gemini-2.5-flash}
+      transcription-model: ${GEMINI_TRANSCRIPTION_MODEL:gemini-3.8-flash}
     auto-tag:
       enabled: ${AI_AUTO_TAG_ENABLED:true}
     rag:

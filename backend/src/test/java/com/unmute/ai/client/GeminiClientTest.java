@@ -39,7 +39,7 @@ class GeminiClientTest {
         AiProperties.Gemini props = new AiProperties.Gemini(KEY,
                 "https://generativelanguage.test/v1beta/openai",
                 "https://generativelanguage.test/v1beta",
-                "gemini-2.5-flash", "gemini-embedding-001", "gemini-2.5-flash",
+                "gemini-3.8-flash", "gemini-embedding-001", "gemini-3.8-flash",
                 4096, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1));
         client = new GeminiClient(builder, builder, props, mapper);
     }
@@ -50,7 +50,7 @@ class GeminiClientTest {
         server.expect(requestTo("https://generativelanguage.test/v1beta/openai/chat/completions"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("Authorization", "Bearer " + KEY))
-                .andExpect(jsonPath("$.model").value("gemini-2.5-flash"))
+                .andExpect(jsonPath("$.model").value("gemini-3.8-flash"))
                 .andExpect(jsonPath("$.response_format.type").value("json_schema"))
                 .andExpect(jsonPath("$.response_format.json_schema.name").value("note_summary"))
                 .andRespond(withSuccess("""
@@ -92,7 +92,7 @@ class GeminiClientTest {
     void transcription(@TempDir Path dir) throws Exception {
         Path audio = Files.write(dir.resolve("stored.webm"), new byte[]{1, 2, 3});
         String encoded = Base64.getEncoder().encodeToString(new byte[]{1, 2, 3});
-        server.expect(requestTo("https://generativelanguage.test/v1beta/models/gemini-2.5-flash:generateContent"))
+        server.expect(requestTo("https://generativelanguage.test/v1beta/models/gemini-3.8-flash:generateContent"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("x-goog-api-key", KEY))
                 .andExpect(jsonPath("$.contents[0].role").value("user"))
