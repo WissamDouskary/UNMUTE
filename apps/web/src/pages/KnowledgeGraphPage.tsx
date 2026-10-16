@@ -457,7 +457,7 @@ export const KnowledgeGraphPage: React.FC = () => {
           )}
         </div>
 
-        <div className="pointer-events-auto flex max-w-full items-center gap-1.5 overflow-x-auto rounded-md border border-zinc-800/50 bg-zinc-900/80 p-1 backdrop-blur-md [scrollbar-width:none]">
+        <div className="pointer-events-auto flex max-w-full items-center gap-1.5 overflow-x-auto rounded-md border border-zinc-800/50 bg-zinc-900/80 p-1 backdrop-blur-md no-scrollbar">
           {NODE_TYPES.map((type) => {
             const meta = TYPE_META[type];
             const active = visibleTypes.has(type);
