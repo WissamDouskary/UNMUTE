@@ -32,7 +32,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -191,7 +190,6 @@ public class TranscriptionJobHandler implements JobHandler {
                 generateNoteTitle(work.originalName()),
                 formatTranscriptAsHtml(result.text(), work.originalName(), result.durationSeconds())
         );
-        note.setTags(Set.of("voice-note", "transcription"));
         note = noteRepository.save(note);
 
         source.setTranscript(result.text());

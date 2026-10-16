@@ -308,8 +308,7 @@ export const SourcesPage: React.FC = () => {
 
   return (
     <div className="flex-1 w-full flex flex-col bg-transparent h-full overflow-y-auto">
-      {/* Centered Constrained Container */}
-      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 pb-20 flex flex-col gap-8">
+      <div className="w-full px-4 sm:px-8 xl:px-12 py-6 pb-20 flex flex-col gap-8">
         {/* Header Title Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-800/60 pb-6">
           <div>
@@ -592,20 +591,21 @@ export const SourcesPage: React.FC = () => {
             </div>
 
             {/* Search Input */}
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 text-zinc-400 absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
+                dir="auto"
                 placeholder="Search transcripts or files..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-zinc-900/60 border border-zinc-800/80 rounded-xl pl-9 pr-8 py-1.5 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-indigo-500/60 transition-colors"
+                className="w-full bg-zinc-900/60 border border-zinc-800/80 rounded-xl ps-9 pe-8 py-1.5 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-indigo-500/60 transition-colors"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+                  className="absolute end-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>

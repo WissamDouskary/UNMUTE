@@ -212,8 +212,8 @@ export function TasksPage() {
       {/* =========================================================================
           TOP HEADER: Minimalist Title + Create Trigger (Centered Alignment)
       ========================================================================== */}
-      <div className="border-b border-zinc-850/40 bg-transparent px-4 sm:px-6 py-2.5">
-        <div className="max-w-4xl mx-auto w-full flex items-center justify-between gap-4">
+      <div className="border-b border-zinc-850/40 bg-transparent px-4 sm:px-8 xl:px-12 py-2.5">
+        <div className="w-full flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <h1 className="text-sm font-semibold text-zinc-100 tracking-tight">
               Tasks
@@ -236,9 +236,8 @@ export function TasksPage() {
         </div>
       </div>
 
-      {/* Main Content Area with Linear Centered Constraint: max-w-4xl mx-auto w-full pt-8 pb-12 */}
-      <div className="flex-1 w-full px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto w-full pt-8 pb-12">
+      <div className="flex-1 w-full px-4 sm:px-8 xl:px-12">
+        <div className="w-full pt-8 pb-12">
           {/* =========================================================================
               STATS CARDS: Unified Control Panel with bg-zinc-900/30 border-zinc-800/50 backdrop-blur-sm
           ========================================================================== */}
@@ -313,19 +312,20 @@ export function TasksPage() {
             </div>
 
             {/* Search Input */}
-            <div className="relative w-full sm:w-52">
-              <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3 h-3 absolute start-2.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
               <input
                 type="text"
+                dir="auto"
                 placeholder="Filter tasks..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-7 pr-6 py-1 bg-zinc-900/60 border border-zinc-800/70 rounded-lg text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500/80 transition-all h-7"
+                className="w-full ps-7 pe-6 py-1 bg-zinc-900/60 border border-zinc-800/70 rounded-lg text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500/80 transition-all h-7"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                  className="absolute end-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -409,8 +409,9 @@ export function TasksPage() {
                       {/* Task Title & Description */}
                       <div className="flex-1 min-w-0 flex items-center gap-2">
                         <span
+                          dir="auto"
                           className={cn(
-                            'text-xs font-medium truncate transition-all',
+                            'text-xs font-medium truncate text-start transition-all',
                             task.isCompleted
                               ? 'line-through text-zinc-500'
                               : 'text-zinc-200 group-hover:text-white'
@@ -420,7 +421,7 @@ export function TasksPage() {
                         </span>
 
                         {task.description && (
-                          <span className="text-[11px] text-zinc-500 truncate hidden md:inline-block max-w-[280px]">
+                          <span dir="auto" className="text-[11px] text-zinc-500 truncate text-start hidden lg:inline min-w-0 flex-1">
                             — {task.description}
                           </span>
                         )}
@@ -429,12 +430,12 @@ export function TasksPage() {
                       {/* Linked Note Badge */}
                       {task.noteId && (
                         <button
-                          onClick={() => navigate('/notes')}
+                          onClick={() => navigate(`/notes?noteId=${encodeURIComponent(task.noteId!)}`)}
                           title="Open parent note"
                           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-900/80 hover:bg-violet-950/30 border border-zinc-800/60 hover:border-violet-500/30 text-[10px] text-zinc-400 hover:text-violet-300 transition-all cursor-pointer flex-shrink-0"
                         >
                           <FileText className="w-3 h-3 text-violet-400" />
-                          <span className="truncate max-w-[120px] hidden sm:inline-block">
+                          <span dir="auto" className="truncate max-w-[10rem] xl:max-w-xs hidden sm:inline-block text-start">
                             {task.noteTitle || 'Note'}
                           </span>
                           <ArrowUpRight className="w-2.5 h-2.5 opacity-60" />

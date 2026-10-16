@@ -1267,18 +1267,19 @@ export function NotesPage() {
         {/* Search Bar */}
         <div className="p-3 border-b border-zinc-800/60">
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
+              dir="auto"
               placeholder="Search notes or keywords..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-zinc-900/80 border border-zinc-800 rounded-lg text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500/80 focus:ring-1 focus:ring-violet-500/30 transition-all"
+              className="w-full ps-9 pe-8 py-2 bg-zinc-900/80 border border-zinc-800 rounded-lg text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500/80 focus:ring-1 focus:ring-violet-500/30 transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                className="absolute end-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -1324,7 +1325,7 @@ export function NotesPage() {
 
         {/* Tag Filter Chips */}
         {availableTags.length > 0 && (
-          <div className="px-3 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-zinc-800/60 text-xs">
+          <div className="relative z-10 shrink-0 px-3 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-zinc-800/60 bg-zinc-950 text-xs">
             <button
               onClick={() => setSelectedTag(null)}
               className={`px-2.5 py-0.5 rounded-full flex-shrink-0 transition-all cursor-pointer ${
@@ -1430,7 +1431,8 @@ export function NotesPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <h3
-                          className={`text-sm truncate flex-1 ${
+                          dir="auto"
+                          className={`text-sm truncate text-start flex-1 ${
                             isSelected || isCardChecked ? 'text-zinc-100 font-semibold' : 'text-zinc-300 font-medium'
                           }`}
                         >
@@ -1441,7 +1443,7 @@ export function NotesPage() {
                         )}
                       </div>
 
-                      <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed mb-2.5">
+                      <p dir="auto" className="text-xs text-zinc-400 line-clamp-2 text-start leading-relaxed mb-2.5">
                         {getExcerpt(note.content)}
                       </p>
 
@@ -1776,15 +1778,15 @@ export function NotesPage() {
               </div>
             </div>
 
-            {/* Reading Constraint (The 65-Character Rule): Centered max-w-3xl editor canvas */}
-            <div className="flex-1 overflow-y-auto px-5 sm:px-12 py-8 sm:py-12 lg:py-16">
-              <div className="max-w-3xl mx-auto w-full flex flex-col min-h-full">
+            <div className="flex-1 overflow-y-auto px-5 sm:px-10 xl:px-16 py-8 sm:py-12 lg:py-16">
+              <div className="max-w-5xl xl:max-w-6xl mx-auto w-full flex flex-col min-h-full">
                 {/* Note Title (textarea so long titles wrap instead of scrolling sideways) */}
                 <textarea
                   ref={titleInputRef}
                   rows={1}
                   placeholder="Untitled Note"
                   aria-label="Note title"
+                  dir="auto"
                   value={title}
                   onChange={(e) => handleTitleChange(e.target.value.replace(/\n/g, ' '))}
                   onKeyDown={(e) => {

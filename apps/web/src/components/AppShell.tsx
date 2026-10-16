@@ -277,7 +277,7 @@ export const AppShell: React.FC = () => {
         </header>
 
         {/* Dynamic Nested View */}
-        <main className={`flex-1 flex flex-col min-h-0 w-full ${isFullBleed ? 'overflow-hidden' : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto'}`}>
+        <main className={`flex-1 flex flex-col min-h-0 w-full ${isFullBleed ? 'overflow-hidden' : 'p-4 sm:p-6 lg:p-8 w-full'}`}>
           <Outlet />
         </main>
 

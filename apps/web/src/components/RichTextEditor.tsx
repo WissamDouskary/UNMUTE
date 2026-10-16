@@ -216,6 +216,7 @@ export function RichTextEditor({
       Typography,
       TextDirection.configure({
         types: ['heading', 'paragraph', 'bulletList', 'orderedList', 'taskList', 'blockquote'],
+        defaultDirection: 'auto',
       }),
       Table.configure({
         resizable: true,
