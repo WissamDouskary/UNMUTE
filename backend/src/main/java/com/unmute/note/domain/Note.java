@@ -2,6 +2,7 @@ package com.unmute.note.domain;
 
 import com.unmute.auth.domain.User;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -36,6 +37,7 @@ public class Note {
     private boolean isArchived = false;
 
     @ElementCollection(fetch = FetchType.EAGER)
+    @BatchSize(size = 50)
     @CollectionTable(name = "note_tags", joinColumns = @JoinColumn(name = "note_id"))
     @Column(name = "tag", length = 50)
     private Set<String> tags = new HashSet<>();
