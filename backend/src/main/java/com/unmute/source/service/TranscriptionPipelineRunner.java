@@ -2,110 +2,136 @@ package com.unmute.source.service;
 
 import com.unmute.auth.domain.User;
 import com.unmute.auth.repository.UserRepository;
-import com.unmute.common.exception.ResourceNotFoundException;
 import com.unmute.note.domain.Note;
+import com.unmute.note.event.NoteContentChangedEvent;
 import com.unmute.note.repository.NoteRepository;
 import com.unmute.source.domain.Source;
 import com.unmute.source.domain.SourceStatus;
+import com.unmute.source.event.SourceTranscriptionRequestedEvent;
 import com.unmute.source.repository.SourceRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Background transcription pipeline: PENDING -> TRANSCRIBING -> COMPLETED | FAILED.
+ * <p>
+ * Each state transition commits in its own short transaction, and the (potentially minutes-long)
+ * transcription call runs with no transaction or pooled connection held. That makes TRANSCRIBING
+ * visible to pollers and guarantees a failure can always be recorded.
+ */
 @Service
 public class TranscriptionPipelineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(TranscriptionPipelineRunner.class);
+    private static final int MAX_ERROR_LENGTH = 1_000;
 
     private final SourceRepository sourceRepository;
     private final UserRepository userRepository;
     private final NoteRepository noteRepository;
     private final FileStorageService fileStorageService;
     private final TranscriptionService transcriptionService;
-    private final com.unmute.ai.service.EmbeddingService embeddingService;
+    private final ApplicationEventPublisher events;
+    private final TransactionTemplate tx;
 
     public TranscriptionPipelineRunner(SourceRepository sourceRepository,
                                        UserRepository userRepository,
                                        NoteRepository noteRepository,
                                        FileStorageService fileStorageService,
                                        TranscriptionService transcriptionService,
-                                       com.unmute.ai.service.EmbeddingService embeddingService) {
+                                       ApplicationEventPublisher events,
+                                       PlatformTransactionManager transactionManager) {
         this.sourceRepository = sourceRepository;
         this.userRepository = userRepository;
         this.noteRepository = noteRepository;
         this.fileStorageService = fileStorageService;
         this.transcriptionService = transcriptionService;
-        this.embeddingService = embeddingService;
+        this.events = events;
+        this.tx = new TransactionTemplate(transactionManager);
     }
 
-    /**
-     * Executes the background transcription pipeline in a separate thread.
-     */
+    /** Runs only after the PENDING row is committed, so the worker can always see it. */
     @Async
-    @Transactional
-    public void runPipelineAsync(UUID sourceId, UUID userId) {
-        try {
-            // Small pause to guarantee caller transaction has fully committed
-            Thread.sleep(250);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onTranscriptionRequested(SourceTranscriptionRequestedEvent event) {
+        run(event.sourceId());
+    }
 
-        Source source = sourceRepository.findById(sourceId).orElse(null);
-        if (source == null) {
-            log.error("Source not found for transcription: {}", sourceId);
+    void run(UUID sourceId) {
+        Job job = tx.execute(status -> claim(sourceId));
+        if (job == null) {
             return;
         }
 
         try {
-            // Update status to TRANSCRIBING
-            source.setStatus(SourceStatus.TRANSCRIBING);
-            source = sourceRepository.save(source);
-            log.info("Source {} status set to TRANSCRIBING", sourceId);
+            String filePath = fileStorageService.getFilePath(job.filename()).toString();
+            TranscriptionService.TranscriptionResult result =
+                    transcriptionService.transcribe(filePath, job.fileType(), job.originalName());
 
-            // Get file path
-            String filePath = fileStorageService.getFilePath(source.getFilename()).toString();
-
-            // Run transcription
-            TranscriptionService.TranscriptionResult result = transcriptionService.transcribe(
-                    filePath, source.getFileType(), source.getOriginalName()
-            );
-
-            // Save transcript and duration
-            source.setTranscript(result.text());
-            source.setDurationSeconds(result.durationSeconds());
-
-            // Auto-create a Note from the transcript
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
-
-            String noteTitle = generateNoteTitle(source.getOriginalName());
-            String noteContent = formatTranscriptAsHtml(result.text(), source.getOriginalName(), result.durationSeconds());
-
-            Note note = new Note(user, noteTitle, noteContent);
-            note.setTags(Set.of("voice-note", "transcription"));
-            note = noteRepository.save(note);
-            embeddingService.syncNoteEmbedding(note);
-
-            source.setNote(note);
-            source.setStatus(SourceStatus.COMPLETED);
-            sourceRepository.save(source);
-
-            log.info("Transcription pipeline completed successfully for source {} -> Note {}", sourceId, note.getId());
-
+            tx.executeWithoutResult(status -> complete(sourceId, job, result));
         } catch (Exception e) {
             log.error("Transcription pipeline failed for source {}: {}", sourceId, e.getMessage(), e);
-            source.setStatus(SourceStatus.FAILED);
-            source.setErrorMessage(e.getMessage());
-            sourceRepository.save(source);
+            tx.executeWithoutResult(status -> fail(sourceId, e));
         }
+    }
+
+    private record Job(UUID userId, String filename, String fileType, String originalName) {}
+
+    /** Atomically moves PENDING -> TRANSCRIBING; returns null if the source is gone or already claimed. */
+    private Job claim(UUID sourceId) {
+        if (sourceRepository.claimPending(sourceId, Instant.now()) == 0) {
+            return null;
+        }
+        Source source = sourceRepository.findById(sourceId).orElseThrow();
+        log.info("Source {} status set to TRANSCRIBING", sourceId);
+        return new Job(source.getUser().getId(), source.getFilename(), source.getFileType(), source.getOriginalName());
+    }
+
+    private void complete(UUID sourceId, Job job, TranscriptionService.TranscriptionResult result) {
+        Source source = sourceRepository.findById(sourceId).orElse(null);
+        if (source == null) {
+            log.info("Source {} was deleted during transcription; discarding transcript", sourceId);
+            return;
+        }
+
+        User user = userRepository.getReferenceById(job.userId());
+        Note note = new Note(
+                user,
+                generateNoteTitle(job.originalName()),
+                formatTranscriptAsHtml(result.text(), job.originalName(), result.durationSeconds())
+        );
+        note.setTags(Set.of("voice-note", "transcription"));
+        note = noteRepository.save(note);
+
+        source.setTranscript(result.text());
+        source.setDurationSeconds(result.durationSeconds());
+        source.setNote(note);
+        source.setStatus(SourceStatus.COMPLETED);
+        source.setErrorMessage(null);
+
+        events.publishEvent(new NoteContentChangedEvent(note.getId()));
+        log.info("Transcription pipeline completed for source {} -> Note {}", sourceId, note.getId());
+    }
+
+    private void fail(UUID sourceId, Exception cause) {
+        sourceRepository.findById(sourceId).ifPresent(source -> {
+            String message = cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
+            source.setStatus(SourceStatus.FAILED);
+            source.setErrorMessage(message.length() > MAX_ERROR_LENGTH ? message.substring(0, MAX_ERROR_LENGTH) : message);
+        });
     }
 
     private String generateNoteTitle(String originalName) {
@@ -117,7 +143,7 @@ public class TranscriptionPipelineRunner {
 
         if (baseName.toLowerCase().startsWith("recording") || baseName.toLowerCase().startsWith("blob")) {
             String date = LocalDate.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy"));
-            String time = java.time.LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm a"));
+            String time = LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm a"));
             return "Voice Note — " + date + " at " + time;
         }
 
@@ -140,7 +166,7 @@ public class TranscriptionPipelineRunner {
         int sentenceCount = 0;
 
         for (String sentence : sentences) {
-            paragraph.append(sentence).append(" ");
+            paragraph.append(escapeHtml(sentence)).append(" ");
             sentenceCount++;
             if (sentenceCount >= 3) {
                 html.append("<p>").append(paragraph.toString().trim()).append("</p>");

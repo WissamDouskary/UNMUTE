@@ -6,7 +6,9 @@ import com.unmute.auth.domain.User;
 import com.unmute.auth.repository.UserRepository;
 import com.unmute.common.exception.ResourceNotFoundException;
 import com.unmute.note.domain.Note;
+import com.unmute.note.event.NoteContentChangedEvent;
 import com.unmute.note.repository.NoteRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import com.unmute.task.domain.Task;
 import com.unmute.task.repository.TaskRepository;
 import org.springframework.stereotype.Service;
@@ -24,17 +26,20 @@ public class AiService {
     private final UserRepository userRepository;
     private final NoteRepository noteRepository;
     private final TaskRepository taskRepository;
+    private final ApplicationEventPublisher events;
 
     public AiService(
             AiProvider aiProvider,
             UserRepository userRepository,
             NoteRepository noteRepository,
-            TaskRepository taskRepository
+            TaskRepository taskRepository,
+            ApplicationEventPublisher events
     ) {
         this.aiProvider = aiProvider;
         this.userRepository = userRepository;
         this.noteRepository = noteRepository;
         this.taskRepository = taskRepository;
+        this.events = events;
     }
 
     public SummarizeResponse summarize(UUID userId, SummarizeRequest request) {
@@ -45,6 +50,7 @@ public class AiService {
             noteRepository.findByIdAndUserId(request.noteId(), userId).ifPresent(note -> {
                 note.setSummary(response.summary());
                 noteRepository.save(note);
+                events.publishEvent(new NoteContentChangedEvent(note.getId()));
             });
         }
 

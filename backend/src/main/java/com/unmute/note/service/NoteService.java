@@ -8,8 +8,9 @@ import com.unmute.note.domain.Note;
 import com.unmute.note.dto.CreateNoteRequest;
 import com.unmute.note.dto.NoteDto;
 import com.unmute.note.dto.UpdateNoteRequest;
+import com.unmute.note.event.NoteContentChangedEvent;
 import com.unmute.note.repository.NoteRepository;
-import com.unmute.ai.service.EmbeddingService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -26,16 +28,16 @@ public class NoteService {
 
     private final NoteRepository noteRepository;
     private final UserRepository userRepository;
-    private final EmbeddingService embeddingService;
+    private final ApplicationEventPublisher events;
 
     public NoteService(
             NoteRepository noteRepository,
             UserRepository userRepository,
-            EmbeddingService embeddingService
+            ApplicationEventPublisher events
     ) {
         this.noteRepository = noteRepository;
         this.userRepository = userRepository;
-        this.embeddingService = embeddingService;
+        this.events = events;
     }
 
     public NoteDto createNote(UUID userId, CreateNoteRequest request) {
@@ -51,7 +53,7 @@ public class NoteService {
         }
 
         Note saved = noteRepository.save(note);
-        embeddingService.syncNoteEmbedding(saved);
+        events.publishEvent(new NoteContentChangedEvent(saved.getId()));
         return NoteDto.fromEntity(saved);
     }
 
@@ -86,6 +88,7 @@ public class NoteService {
     public NoteDto updateNote(UUID userId, UUID noteId, UpdateNoteRequest request) {
         Note note = noteRepository.findByIdAndUserId(noteId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Note not found with id: " + noteId));
+        EmbeddableFields embeddableBefore = EmbeddableFields.of(note);
 
         if (request.getTitle() != null && !request.getTitle().trim().isBlank()) {
             note.setTitle(request.getTitle().trim());
@@ -107,8 +110,16 @@ public class NoteService {
         }
 
         Note updated = noteRepository.save(note);
-        embeddingService.syncNoteEmbedding(updated);
+        if (!EmbeddableFields.of(updated).equals(embeddableBefore)) {
+            events.publishEvent(new NoteContentChangedEvent(updated.getId()));
+        }
         return NoteDto.fromEntity(updated);
+    }
+
+    private record EmbeddableFields(String title, String content, String summary, Set<String> tags) {
+        static EmbeddableFields of(Note note) {
+            return new EmbeddableFields(note.getTitle(), note.getContent(), note.getSummary(), Set.copyOf(note.getTags()));
+        }
     }
 
     public NoteDto toggleArchive(UUID userId, UUID noteId) {
@@ -132,7 +143,7 @@ public class NoteService {
     public void deleteNote(UUID userId, UUID noteId) {
         Note note = noteRepository.findByIdAndUserId(noteId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Note not found with id: " + noteId));
-        embeddingService.deleteNoteEmbedding(noteId);
+        // note_embeddings rows are removed by the ON DELETE CASCADE foreign key.
         noteRepository.delete(note);
     }
 

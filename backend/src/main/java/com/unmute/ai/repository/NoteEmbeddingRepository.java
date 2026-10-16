@@ -4,6 +4,7 @@ import com.unmute.ai.dto.SemanticSearchResultDto;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -32,12 +33,15 @@ public class NoteEmbeddingRepository {
         jdbcTemplate.update(sql, noteId, userId, vectorLiteral, chunkText);
     }
 
-    public void deleteByNoteId(UUID noteId) {
-        String sql = "DELETE FROM note_embeddings WHERE note_id = ?";
-        jdbcTemplate.update(sql, noteId);
-    }
-
+    /**
+     * Must run inside a transaction: the HNSW index is shared by all users and the user filter is applied
+     * after the index scan, so without iterative scanning a user can get fewer than {@code limit} rows
+     * (or none) once other users' vectors dominate the candidate list. Requires pgvector >= 0.8.
+     */
+    @Transactional(readOnly = true)
     public List<SemanticSearchResultDto> searchSimilarNotes(UUID userId, String queryVectorLiteral, int limit) {
+        jdbcTemplate.execute("SET LOCAL hnsw.iterative_scan = strict_order");
+
         String sql = """
             SELECT n.id, n.title, n.content, n.summary,
                    1 - (ne.embedding <=> cast(? as vector)) AS similarity,
@@ -81,7 +85,8 @@ public class NoteEmbeddingRepository {
     public List<UUID> findNoteIdsWithoutEmbeddings() {
         String sql = """
             SELECT n.id FROM notes n
-            WHERE n.id NOT IN (SELECT ne.note_id FROM note_embeddings ne);
+            LEFT JOIN note_embeddings ne ON ne.note_id = n.id
+            WHERE ne.note_id IS NULL;
             """;
         return jdbcTemplate.query(sql, (rs, rowNum) -> (UUID) rs.getObject("id"));
     }
