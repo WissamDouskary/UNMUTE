@@ -30,7 +30,17 @@ import type {
   AskResponse,
   GraphTopology,
   GraphTopologyParams,
+  LiveEvent,
+  LiveEventHandlers,
 } from './types';
+import { readSseStream } from './sse';
+
+const LIVE_EVENT_TYPES: ReadonlySet<string> = new Set<LiveEvent['type']>([
+  'note.tagged',
+  'note.tag-failed',
+  'note.created',
+  'source.updated',
+]);
 
 // Ambient declaration for process in environments without @types/node
 declare const process:
@@ -74,16 +84,18 @@ export function resolveBaseUrl(): string {
   return 'http://localhost:8080';
 }
 
+export type UnauthorizedHandler = () => void | Promise<void>;
+
 export interface ApiClientConfig {
   baseUrl?: string;
   getAccessToken?: () => string | null;
-  onUnauthorized?: () => void;
+  onUnauthorized?: UnauthorizedHandler;
 }
 
 export class ApiClient {
   private baseUrl: string;
   private getAccessToken: () => string | null;
-  private onUnauthorized?: () => void;
+  private onUnauthorized?: UnauthorizedHandler;
 
   constructor(config: ApiClientConfig = {}) {
     this.baseUrl = config.baseUrl ?? resolveBaseUrl();
@@ -103,7 +115,7 @@ export class ApiClient {
     this.getAccessToken = getter;
   }
 
-  setOnUnauthorized(callback: () => void): void {
+  setOnUnauthorized(callback: UnauthorizedHandler): void {
     this.onUnauthorized = callback;
   }
 
@@ -321,6 +333,98 @@ export class ApiClient {
 
   extractTasksFromContent(data: ExtractTasksRequest): Promise<ExtractTasksResponse> {
     return this.post<ExtractTasksResponse>('/api/v1/ai/extract-tasks', data);
+  }
+
+  /** Queues a forced auto-tag run; the result arrives as a `note.tagged` / `note.tag-failed` live event. */
+  requestAutoTag(noteId: string): Promise<{ status: string }> {
+    return this.post<{ status: string }>('/api/v1/ai/auto-tag', { noteId });
+  }
+
+  // --- Live Events ---
+
+  /**
+   * Opens the authenticated live event stream and keeps it open, reconnecting with
+   * exponential backoff. Returns a function that closes the stream for good.
+   */
+  subscribeToEvents(handlers: LiveEventHandlers): () => void {
+    let closed = false;
+    let controller: AbortController | null = null;
+    let cancelWait: (() => void) | null = null;
+    let failures = 0;
+    let hasOpened = false;
+
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          cancelWait = null;
+          resolve();
+        }, ms);
+        cancelWait = () => {
+          clearTimeout(timer);
+          cancelWait = null;
+          resolve();
+        };
+      });
+
+    const run = async () => {
+      while (!closed) {
+        handlers.onStatusChange?.(hasOpened ? 'reconnecting' : 'connecting', false);
+        controller = new AbortController();
+        try {
+          const token = this.getAccessToken();
+          const headers: Record<string, string> = { Accept: 'text/event-stream' };
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+
+          const response = await fetch(this.buildUrl('/api/v1/events'), {
+            headers,
+            signal: controller.signal,
+            cache: 'no-store',
+          });
+
+          if (response.status === 401) {
+            await this.onUnauthorized?.();
+            throw new Error('Live event stream unauthorized');
+          }
+          if (!response.ok || !response.body) {
+            throw new Error(`Live event stream failed: HTTP ${response.status}`);
+          }
+
+          for await (const message of readSseStream(response.body)) {
+            if (closed) break;
+            if (message.event === 'ready') {
+              handlers.onStatusChange?.('open', hasOpened);
+              hasOpened = true;
+              failures = 0;
+              continue;
+            }
+            if (!LIVE_EVENT_TYPES.has(message.event)) continue;
+            try {
+              handlers.onEvent({ type: message.event, data: JSON.parse(message.data) } as LiveEvent);
+            } catch (err) {
+              console.warn('Dropped malformed live event', message.event, err);
+            }
+          }
+        } catch {
+          // Network drop, abort, or auth failure: fall through to backoff.
+        }
+
+        if (closed) break;
+        failures += 1;
+        const base = Math.min(30_000, 1_000 * 2 ** Math.min(failures - 1, 5));
+        await wait(base * (0.8 + Math.random() * 0.4));
+      }
+      handlers.onStatusChange?.('closed', false);
+    };
+
+    void run();
+
+    return () => {
+      closed = true;
+      controller?.abort();
+      cancelWait?.();
+    };
   }
 
   // --- Sources & Audio Capture Endpoints ---

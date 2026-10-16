@@ -243,3 +243,44 @@ export interface GraphTopologyParams {
   includeTags?: boolean;
 }
 
+// --- Live Events (Server-Sent Events) ---
+
+export interface NoteTaggedEvent {
+  noteId: string;
+  addedTags: string[];
+  tags: string[];
+}
+
+export interface NoteTagFailedEvent {
+  noteId: string;
+  message: string;
+}
+
+export interface NoteCreatedEvent {
+  noteId: string;
+  title: string;
+  sourceId: string | null;
+}
+
+export interface SourceUpdatedEvent {
+  sourceId: string;
+  status: SourceStatus;
+  noteId: string | null;
+}
+
+export type LiveEvent =
+  | { type: 'note.tagged'; data: NoteTaggedEvent }
+  | { type: 'note.tag-failed'; data: NoteTagFailedEvent }
+  | { type: 'note.created'; data: NoteCreatedEvent }
+  | { type: 'source.updated'; data: SourceUpdatedEvent };
+
+export type LiveEventType = LiveEvent['type'];
+
+export type LiveConnectionStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';
+
+export interface LiveEventHandlers {
+  onEvent: (event: LiveEvent) => void;
+  /** `reconnected` is true when the stream reopens after a drop, so callers can resync missed state. */
+  onStatusChange?: (status: LiveConnectionStatus, reconnected: boolean) => void;
+}
+

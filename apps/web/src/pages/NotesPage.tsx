@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { apiClient, Note, Task } from '@unmute/api-client';
 import { RichTextEditor, cleanTaskTitle } from '../components/RichTextEditor';
+import { useLiveEvent } from '../hooks/useLiveEvents';
 
 type FilterTab = 'all' | 'pinned' | 'archived';
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
@@ -82,10 +83,12 @@ export function NotesPage() {
     id: string;
     title: string;
     content: string;
-    tags: string[];
     isPinned: boolean;
     isArchived: boolean;
   } | null>(null);
+
+  // Tags just applied by the live auto-tagger, so the editor can sparkle them.
+  const [freshAiTags, setFreshAiTags] = useState<Set<string>>(new Set());
 
   const selectedNoteIdRef = useRef<string | null>(selectedNoteId);
   selectedNoteIdRef.current = selectedNoteId;
@@ -227,7 +230,7 @@ export function NotesPage() {
       payload,
     }: {
       noteId: string;
-      payload: { title: string; content: string; tags: string[]; isPinned: boolean; isArchived: boolean };
+      payload: { title: string; content: string; isPinned: boolean; isArchived: boolean };
     }) => apiClient.updateNote(noteId, payload),
     onMutate: () => {
       setSaveStatus('saving');
@@ -255,7 +258,6 @@ export function NotesPage() {
       payload: {
         title: string;
         content: string;
-        tags: string[];
         isPinned: boolean;
         isArchived: boolean;
       }
@@ -266,7 +268,6 @@ export function NotesPage() {
         payload: {
           title: titleToSave,
           content: payload.content,
-          tags: payload.tags,
           isPinned: payload.isPinned,
           isArchived: payload.isArchived,
         },
@@ -294,7 +295,6 @@ export function NotesPage() {
       overrides?: Partial<{
         title: string;
         content: string;
-        tags: string[];
         isPinned: boolean;
         isArchived: boolean;
       }>
@@ -308,7 +308,6 @@ export function NotesPage() {
         id: currentId,
         title: overrides?.title !== undefined ? overrides.title : titleRef.current,
         content: overrides?.content !== undefined ? overrides.content : contentRef.current,
-        tags: overrides?.tags !== undefined ? overrides.tags : tagsRef.current,
         isPinned: overrides?.isPinned !== undefined ? overrides.isPinned : isPinnedRef.current,
         isArchived: overrides?.isArchived !== undefined ? overrides.isArchived : isArchivedRef.current,
       };
@@ -357,6 +356,7 @@ export function NotesPage() {
       }
 
       currentNoteIdRef.current = selectedNoteId;
+      setFreshAiTags(new Set());
 
       if (activeNote) {
         setTitle(activeNote.title || '');
@@ -384,14 +384,14 @@ export function NotesPage() {
         setSaveStatus('saved');
       }
     } else if (activeNote) {
-      // Same note, sync query changes (e.g. tag additions, pin/archive) only if no pending local typing
+      // Tags always come from the server so an in-flight autosave cannot clobber AI tags.
+      setTags(activeNote.tags || []);
+      tagsRef.current = activeNote.tags || [];
       if (!pendingSaveRef.current) {
         setTitle(activeNote.title || '');
         titleRef.current = activeNote.title || '';
         setContent(activeNote.content || '');
         contentRef.current = activeNote.content || '';
-        setTags(activeNote.tags || []);
-        tagsRef.current = activeNote.tags || [];
         setIsPinned(activeNote.isPinned);
         isPinnedRef.current = activeNote.isPinned;
         setIsArchived(activeNote.isArchived);
@@ -1105,6 +1105,62 @@ export function NotesPage() {
     extractTasksMutation.mutate(content);
   };
 
+  const autoTagMutation = useMutation({
+    mutationFn: (noteId: string) => apiClient.requestAutoTag(noteId),
+    onMutate: () => {
+      setIsAiLoading(true);
+    },
+    onSuccess: () => {
+      setIsAiLoading(false);
+      setAiNotification({
+        message: 'Auto-tag queued. New tags will appear here in a moment.',
+        type: 'info',
+      });
+      setTimeout(() => setAiNotification(null), 4000);
+    },
+    onError: (err) => {
+      setIsAiLoading(false);
+      console.error('Auto-tag failed:', err);
+      setAiNotification({
+        message: 'Could not queue auto-tag. Please try again.',
+        type: 'error',
+      });
+      setTimeout(() => setAiNotification(null), 4000);
+    },
+  });
+
+  const handleAiAutoTag = () => {
+    if (!selectedNoteId) return;
+    autoTagMutation.mutate(selectedNoteId);
+  };
+
+  useLiveEvent((event) => {
+    if (event.type === 'note.tagged') {
+      const { noteId, addedTags, tags: nextTags } = event.data;
+      if (noteId === selectedNoteIdRef.current) {
+        setTags(nextTags);
+        tagsRef.current = nextTags;
+        if (addedTags.length > 0) {
+          setFreshAiTags(new Set(addedTags));
+          setAiNotification({
+            message: `AI tagged this note: ${addedTags.map((t) => `#${t}`).join(' ')}`,
+            type: 'success',
+          });
+          setTimeout(() => setAiNotification(null), 5000);
+          setTimeout(() => setFreshAiTags(new Set()), 8000);
+        }
+      }
+      return;
+    }
+    if (event.type === 'note.tag-failed' && event.data.noteId === selectedNoteIdRef.current) {
+      setAiNotification({
+        message: event.data.message || 'Auto-tag failed. Please try again.',
+        type: 'error',
+      });
+      setTimeout(() => setAiNotification(null), 5000);
+    }
+  });
+
   // Content Statistics
   const stats = useMemo(() => {
     // Strip HTML tags for word counting
@@ -1639,6 +1695,19 @@ export function NotesPage() {
                           <p className="text-[10px] text-zinc-500">Detect & sync with Tasks</p>
                         </div>
                       </button>
+                      <button
+                        onClick={() => {
+                          setShowAiMenu(false);
+                          handleAiAutoTag();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-xs text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+                      >
+                        <TagIcon className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                        <div>
+                          <p className="font-semibold">Auto-Tag Note</p>
+                          <p className="text-[10px] text-zinc-500">Suggest tags from the content</p>
+                        </div>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1706,21 +1775,29 @@ export function NotesPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3 pb-6 mb-8 border-b border-zinc-800/80 text-xs">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <TagIcon className="w-3.5 h-3.5 text-zinc-500 mr-0.5" />
-                    {tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="group flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 font-mono text-[11px]"
-                      >
-                        #{tag}
-                        <button
-                          onClick={() => handleRemoveTag(tag)}
-                          aria-label={`Remove tag ${tag}`}
-                          className="hover:text-red-400 transition-colors cursor-pointer"
+                    {tags.map((tag) => {
+                      const isFresh = freshAiTags.has(tag);
+                      return (
+                        <span
+                          key={tag}
+                          className={`group flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] transition-colors ${
+                            isFresh
+                              ? 'bg-violet-500/25 border border-violet-400/60 text-violet-100 shadow-sm shadow-violet-500/20'
+                              : 'bg-violet-500/10 border border-violet-500/20 text-violet-300'
+                          }`}
                         >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
+                          {isFresh && <Sparkles className="w-3 h-3 text-violet-200" />}
+                          #{tag}
+                          <button
+                            onClick={() => handleRemoveTag(tag)}
+                            aria-label={`Remove tag ${tag}`}
+                            className="hover:text-red-400 transition-colors cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
 
                     {/* Add Tag Input */}
                     {showTagInput ? (
@@ -1781,6 +1858,7 @@ export function NotesPage() {
                     placeholder="Write your thoughts, or press '/' for commands..."
                     onAiSummarize={handleAiSummarize}
                     onAiExtractTasks={handleAiExtractTasks}
+                    onAiAutoTag={handleAiAutoTag}
                     isAiLoading={isAiLoading}
                     linkedTasks={linkedTasks}
                     onTaskCheckChange={handleEditorTaskToggle}

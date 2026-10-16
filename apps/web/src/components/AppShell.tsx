@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLiveEventStream } from '../hooks/useLiveEvents';
 import {
   LayoutDashboard,
   FileText,
@@ -17,7 +18,8 @@ import {
 } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
+  const liveStatus = useLiveEventStream(isAuthenticated);
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -249,8 +251,24 @@ export const AppShell: React.FC = () => {
             </button>
 
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-xs">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[var(--color-text-secondary)]">API Live</span>
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  liveStatus === 'open'
+                    ? 'bg-emerald-400 animate-pulse'
+                    : liveStatus === 'reconnecting'
+                      ? 'bg-amber-400 animate-pulse'
+                      : 'bg-zinc-500'
+                }`}
+              />
+              <span className="text-[var(--color-text-secondary)]">
+                {liveStatus === 'open'
+                  ? 'Live'
+                  : liveStatus === 'reconnecting'
+                    ? 'Reconnecting'
+                    : liveStatus === 'connecting'
+                      ? 'Connecting'
+                      : 'Offline'}
+              </span>
             </div>
             <div className="text-xs text-[var(--color-text-muted)]">
               Logged in as <strong className="text-[var(--color-text-primary)]">{user?.email}</strong>

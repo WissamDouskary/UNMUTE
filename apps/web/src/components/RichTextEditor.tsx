@@ -30,6 +30,7 @@ import {
   AlignRight,
   Sparkles,
   Loader2,
+  Tag,
 } from 'lucide-react';
 
 import { Task } from '@unmute/api-client';
@@ -70,6 +71,7 @@ interface RichTextEditorProps {
   editable?: boolean;
   onAiSummarize?: () => void;
   onAiExtractTasks?: () => void;
+  onAiAutoTag?: () => void;
   isAiLoading?: boolean;
   linkedTasks?: Task[];
   onTaskCheckChange?: (task: { taskId?: string | null; title: string; checked: boolean }) => void;
@@ -164,6 +166,7 @@ export function RichTextEditor({
   editable = true,
   onAiSummarize,
   onAiExtractTasks,
+  onAiAutoTag,
   isAiLoading = false,
   linkedTasks,
   onTaskCheckChange,
@@ -352,8 +355,19 @@ export function RichTextEditor({
         },
       });
     }
+    if (onAiAutoTag) {
+      aiCommands.push({
+        id: 'auto-tag',
+        title: 'Auto-Tag Note',
+        description: 'Suggest tags from this note',
+        icon: Tag,
+        action: () => {
+          onAiAutoTag();
+        },
+      });
+    }
     return [...aiCommands, ...SLASH_COMMANDS];
-  }, [onAiSummarize, onAiExtractTasks]);
+  }, [onAiSummarize, onAiExtractTasks, onAiAutoTag]);
 
   const filteredCommands = slashCommands.filter((cmd: CommandItem) =>
     cmd.title.toLowerCase().includes(slashQuery.toLowerCase()) ||

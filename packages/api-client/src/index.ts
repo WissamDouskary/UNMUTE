@@ -1,7 +1,7 @@
 import { apiClient } from './client';
 
 export { ApiClient, apiClient, resolveBaseUrl } from './client';
-export type { ApiClientConfig } from './client';
+export type { ApiClientConfig, UnauthorizedHandler } from './client';
 export type {
   User,
   AuthResponse,
@@ -38,6 +38,14 @@ export type {
   GraphEdge,
   GraphTopology,
   GraphTopologyParams,
+  NoteTaggedEvent,
+  NoteTagFailedEvent,
+  NoteCreatedEvent,
+  SourceUpdatedEvent,
+  LiveEvent,
+  LiveEventType,
+  LiveConnectionStatus,
+  LiveEventHandlers,
 } from './types';
 
 

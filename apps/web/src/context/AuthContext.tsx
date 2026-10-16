@@ -76,61 +76,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(REFRESH_TOKEN_KEY);
   }, []);
 
-  // Configure ApiClient with in-memory token getter
-  useEffect(() => {
-    apiClient.setTokenGetter(() => accessTokenRef.current);
+  // Refresh tokens are single-use: two concurrent refreshes with the same token look like
+  // token theft to the backend and revoke the whole session family. Every caller shares one
+  // in-flight refresh instead.
+  const refreshInFlightRef = useRef<Promise<boolean> | null>(null);
 
-    apiClient.setOnUnauthorized(async () => {
-      // Automatic session recovery attempt on 401
+  const refreshSession = useCallback((): Promise<boolean> => {
+    if (refreshInFlightRef.current) {
+      return refreshInFlightRef.current;
+    }
+
+    const attempt = (async () => {
       const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
       if (!storedRefreshToken) {
         handleLogoutLocal();
-        return;
+        return false;
       }
-
       try {
         const refreshed = await apiClient.refresh(storedRefreshToken);
         handleAuthSuccess(refreshed);
-      } catch {
+        return true;
+      } catch (err) {
+        console.warn('Session refresh failed or token expired:', err);
         handleLogoutLocal();
+        return false;
+      }
+    })();
+
+    refreshInFlightRef.current = attempt;
+    void attempt.finally(() => {
+      if (refreshInFlightRef.current === attempt) {
+        refreshInFlightRef.current = null;
       }
     });
+    return attempt;
   }, [handleAuthSuccess, handleLogoutLocal]);
+
+  // Configure ApiClient with in-memory token getter
+  useEffect(() => {
+    apiClient.setTokenGetter(() => accessTokenRef.current);
+    apiClient.setOnUnauthorized(async () => {
+      await refreshSession();
+    });
+  }, [refreshSession]);
 
   // Silent session restoration on initial mount
   useEffect(() => {
     let isMounted = true;
 
-    async function restoreSession() {
-      const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-      if (!storedRefreshToken) {
-        if (isMounted) setIsLoading(false);
-        return;
-      }
-
-      try {
-        const response = await apiClient.refresh(storedRefreshToken);
-        if (isMounted) {
-          handleAuthSuccess(response);
-        }
-      } catch (err) {
-        console.warn('Silent session restoration failed or token expired:', err);
-        if (isMounted) {
-          handleLogoutLocal();
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
+    if (!localStorage.getItem(REFRESH_TOKEN_KEY)) {
+      setIsLoading(false);
+      return;
     }
 
-    restoreSession();
+    refreshSession().finally(() => {
+      if (isMounted) {
+        setIsLoading(false);
+      }
+    });
 
     return () => {
       isMounted = false;
     };
-  }, [handleAuthSuccess, handleLogoutLocal]);
+  }, [refreshSession]);
 
   const login = async (credentials: LoginRequest): Promise<void> => {
     setError(null);
