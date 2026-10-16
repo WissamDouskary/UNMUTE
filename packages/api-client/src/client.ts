@@ -28,6 +28,8 @@ import type {
   SemanticSearchRequest,
   AskRequest,
   AskResponse,
+  GraphTopology,
+  GraphTopologyParams,
 } from './types';
 
 // Ambient declaration for process in environments without @types/node
@@ -391,6 +393,21 @@ export class ApiClient {
       ? { question: questionOrRequest, topK: topK ?? 5 }
       : questionOrRequest;
     return this.post<AskResponse>('/api/v1/ai/ask', payload);
+  }
+
+  // --- Knowledge Graph Endpoints ---
+
+  getGraphTopology(params: GraphTopologyParams = {}): Promise<GraphTopology> {
+    const query = new URLSearchParams();
+    if (params.includeArchived !== undefined) {
+      query.set('includeArchived', String(params.includeArchived));
+    }
+    if (params.includeTags !== undefined) {
+      query.set('includeTags', String(params.includeTags));
+    }
+    const queryString = query.toString();
+    const path = queryString ? `/api/v1/graph/topology?${queryString}` : '/api/v1/graph/topology';
+    return this.get<GraphTopology>(path);
   }
 }
 

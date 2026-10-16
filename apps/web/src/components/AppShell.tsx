@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Sparkles,
+  Waypoints,
 } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
@@ -26,8 +27,10 @@ export const AppShell: React.FC = () => {
     location.pathname.startsWith('/notes') ||
     location.pathname.startsWith('/tasks') ||
     location.pathname.startsWith('/sources') ||
-    location.pathname.startsWith('/ask');
+    location.pathname.startsWith('/ask') ||
+    location.pathname.startsWith('/graph');
   const getPageTitle = () => {
+    if (location.pathname.startsWith('/graph')) return 'Knowledge Graph';
     if (location.pathname.startsWith('/notes')) return 'Notes & Knowledge';
     if (location.pathname.startsWith('/tasks')) return 'Tasks & Actions';
     if (location.pathname.startsWith('/projects')) return 'Projects';
@@ -55,6 +58,7 @@ export const AppShell: React.FC = () => {
     { name: 'Tasks', to: '/tasks', icon: CheckSquare, badge: 'Phase 3' },
     { name: 'Projects', to: '/projects', icon: FolderGit2, badge: 'Phase 3' },
     { name: 'Sources', to: '/sources', icon: Radio, badge: 'Phase 4' },
+    { name: 'Graph', to: '/graph', icon: Waypoints, badge: 'Phase 6' },
     { name: 'Settings', to: '/settings', icon: Settings },
   ];
 

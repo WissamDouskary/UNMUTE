@@ -206,3 +206,40 @@ export interface AskResponse {
   citations: Citation[];
 }
 
+// --- Knowledge Graph ---
+
+export type GraphNodeType = 'NOTE' | 'TASK' | 'SOURCE' | 'TAG';
+
+export type GraphEdgeType = 'TASK_OF_NOTE' | 'SOURCE_OF_NOTE' | 'NOTE_TAGGED';
+
+export interface GraphNode {
+  /** Type-prefixed key, e.g. `note:<uuid>` or `tag:<name>`. */
+  id: string;
+  /** Backing row id; absent for tags. */
+  entityId?: string | null;
+  type: GraphNodeType;
+  label: string;
+  /** NOTE: ACTIVE | PINNED | ARCHIVED, TASK: OPEN | COMPLETED, SOURCE: SourceStatus, TAG: absent. */
+  status?: string | null;
+  priority?: TaskPriority | null;
+  updatedAt?: string | null;
+}
+
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: GraphEdgeType;
+}
+
+export interface GraphTopology {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  generatedAt: string;
+}
+
+export interface GraphTopologyParams {
+  includeArchived?: boolean;
+  includeTags?: boolean;
+}
+

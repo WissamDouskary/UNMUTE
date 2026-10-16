@@ -32,6 +32,12 @@ export type {
   Citation,
   AskRequest,
   AskResponse,
+  GraphNodeType,
+  GraphEdgeType,
+  GraphNode,
+  GraphEdge,
+  GraphTopology,
+  GraphTopologyParams,
 } from './types';
 
 

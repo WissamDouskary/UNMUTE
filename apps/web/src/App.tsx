@@ -10,6 +10,7 @@ import { NotesPage } from './pages/NotesPage';
 import { TasksPage } from './pages/TasksPage';
 import { SourcesPage } from './pages/SourcesPage';
 import { AskUnmutePage } from './pages/AskUnmutePage';
+import { KnowledgeGraphPage } from './pages/KnowledgeGraphPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
               <Route path="notes" element={<NotesPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="ask" element={<AskUnmutePage />} />
+              <Route path="graph" element={<KnowledgeGraphPage />} />
               <Route
                 path="projects"
                 element={
