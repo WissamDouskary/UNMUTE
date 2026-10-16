@@ -20,7 +20,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 
-/** {@link AiProvider} backed by a real chat model (Claude or GPT) with schema-constrained JSON output. */
+/** {@link AiProvider} backed by a real chat model (Claude, GPT or Gemini) with schema-constrained JSON output. */
 public class LlmAiProvider implements AiProvider {
 
     private static final int MAX_NOTE_CHARS = 60_000;
@@ -63,14 +63,16 @@ public class LlmAiProvider implements AiProvider {
 
     static final String TAGS_SYSTEM = """
             You tag notes in the user's personal knowledge base so related notes can be found together.
-            Suggest up to %d tags for the note.
+            Return 3 to %d highly relevant, concise tags.
             - Prefer tags from the user's existing tags (listed in <existing_tags>) whenever one fits; only \
             invent a new tag for a clearly distinct topic.
             - Tags are specific topics, projects, technologies, people, places or note types, e.g. \
-            "product-roadmap", "kafka", "hiring", "meeting-notes".
-            - Lowercase, 1-3 words joined with hyphens, in the note's language.
+            "gaming", "product-roadmap", "kafka", "personal".
+            - Lowercase kebab-case, 1-3 words, in the note's language.
             - Avoid vague tags such as "note", "misc", "ideas", "important", "voice-note" or "transcription".
-            - Return fewer tags, or none, if the note is too vague to tag well.""";
+            - Always return between 3 and %d tags. If the note is thin, infer the strongest specific topics \
+            rather than returning fewer.
+            Respond with JSON only: {"tags":["..."]}.""";
 
     private static final ObjectNode TAGS_SCHEMA = JsonSchemas.object(Map.of(
             "tags", JsonSchemas.arrayOf(JsonSchemas.string("one tag in lowercase kebab-case"), "suggested tags")));
@@ -211,7 +213,7 @@ public class LlmAiProvider implements AiProvider {
                 .append(NoteText.truncate(text, MAX_TAG_NOTE_CHARS))
                 .append("\n</note>");
 
-        JsonNode result = llm.completeJson(TAGS_SYSTEM.formatted(maxTags), user.toString(), "note_tags", TAGS_SCHEMA, true);
+        JsonNode result = llm.completeJson(TAGS_SYSTEM.formatted(maxTags, maxTags), user.toString(), "note_tags", TAGS_SCHEMA, true);
         List<String> tags = new ArrayList<>();
         for (JsonNode tag : result.path("tags")) {
             if (tag.isTextual()) {

@@ -37,7 +37,7 @@ public class NoteJobScheduler {
     public void noteChanged(Note note) {
         enqueueEmbedding(note.getId(), EMBED_DEBOUNCE);
         if (autoTag.enabled() && note.getAutoTaggedAt() == null) {
-            enqueueAutoTag(note.getId(), autoTag.debounce(), false);
+            enqueueAutoTag(note.getId(), autoTag.debounce(), false, false);
         }
     }
 
@@ -45,13 +45,13 @@ public class NoteJobScheduler {
     public void transcriptNoteCreated(Note note) {
         enqueueEmbedding(note.getId(), Duration.ZERO);
         if (autoTag.enabled()) {
-            enqueueAutoTag(note.getId(), Duration.ZERO, false);
+            enqueueAutoTag(note.getId(), Duration.ZERO, false, true);
         }
     }
 
     /** User-requested tagging; runs even if the note was tagged before. */
     public void requestAutoTag(UUID noteId) {
-        enqueueAutoTag(noteId, Duration.ZERO, true);
+        enqueueAutoTag(noteId, Duration.ZERO, true, false);
     }
 
     public void reindex(UUID noteId) {
@@ -65,8 +65,9 @@ public class NoteJobScheduler {
     }
 
     /** Forced requests use their own key so a pending automatic run cannot swallow them. */
-    private void enqueueAutoTag(UUID noteId, Duration delay, boolean force) {
-        jobQueue.enqueue(JobSpec.of(JobTypes.AUTO_TAG_NOTE, Map.of("noteId", noteId, "force", force))
+    private void enqueueAutoTag(UUID noteId, Duration delay, boolean force, boolean fromTranscript) {
+        jobQueue.enqueue(JobSpec.of(JobTypes.AUTO_TAG_NOTE,
+                        Map.of("noteId", noteId, "force", force, "fromTranscript", fromTranscript))
                 .dedupedBy(force ? noteId + ":force" : noteId.toString())
                 .delayedBy(delay)
                 .withMaxAttempts(AUTO_TAG_MAX_ATTEMPTS));

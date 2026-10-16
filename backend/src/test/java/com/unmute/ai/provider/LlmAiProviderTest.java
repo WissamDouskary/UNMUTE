@@ -123,6 +123,22 @@ class LlmAiProviderTest {
     }
 
     @Test
+    @DisplayName("Tag suggestions send the vocabulary, cap the count, and ask for JSON tags")
+    void suggestTags() {
+        FakeLlm llm = new FakeLlm("""
+                {"tags":["kafka","event-bus","architecture","misc","voice-note"]}""");
+        List<String> tags = new LlmAiProvider(llm, CLOCK)
+                .suggestTags("Architecture review", "<p>We are moving the event bus to Kafka.</p>",
+                        List.of("architecture", "hiring"), 5);
+
+        assertThat(llm.schemaNames.get(0)).isEqualTo("note_tags");
+        assertThat(llm.systems.get(0)).contains("Return 3 to 5");
+        assertThat(llm.users.get(0)).contains("<existing_tags>architecture, hiring</existing_tags>")
+                .contains("We are moving the event bus to Kafka.");
+        assertThat(tags).containsExactly("kafka", "event-bus", "architecture", "misc", "voice-note");
+    }
+
+    @Test
     @DisplayName("Without relevant notes the model is not called")
     void ragWithoutNotes() {
         FakeLlm llm = new FakeLlm("{}");

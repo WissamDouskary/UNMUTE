@@ -2,6 +2,7 @@ package com.unmute.ai.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.unmute.ai.config.AiProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -45,17 +46,20 @@ class GeminiClientTest {
     }
 
     @Test
-    @DisplayName("Chat requests use json_schema output and return the parsed content")
+    @DisplayName("Chat requests use native generateContent with a JSON response schema")
     void chatJson() {
-        server.expect(requestTo("https://generativelanguage.test/v1beta/openai/chat/completions"))
+        server.expect(requestTo("https://generativelanguage.test/v1beta/models/gemini-3.8-flash:generateContent"))
                 .andExpect(method(HttpMethod.POST))
-                .andExpect(header("Authorization", "Bearer " + KEY))
-                .andExpect(jsonPath("$.model").value("gemini-3.8-flash"))
-                .andExpect(jsonPath("$.response_format.type").value("json_schema"))
-                .andExpect(jsonPath("$.response_format.json_schema.name").value("note_summary"))
+                .andExpect(header("x-goog-api-key", KEY))
+                .andExpect(jsonPath("$.systemInstruction.parts[0].text").value("sys"))
+                .andExpect(jsonPath("$.contents[0].parts[0].text").value("user"))
+                .andExpect(jsonPath("$.generationConfig.responseMimeType").value("application/json"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.type").value("OBJECT"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.additionalProperties").doesNotExist())
+                .andExpect(jsonPath("$.generationConfig.responseSchema.properties.summary.type").value("STRING"))
                 .andRespond(withSuccess("""
-                        {"choices":[{"finish_reason":"stop","message":{"role":"assistant",
-                          "content":"{\\"summary\\":\\"Short.\\",\\"keyPoints\\":[\\"a\\"]}"}}]}
+                        {"candidates":[{"finishReason":"STOP","content":{"parts":[
+                          {"text":"{\\"summary\\":\\"Short.\\",\\"keyPoints\\":[\\"a\\"]}"}]}}]}
                         """, MediaType.APPLICATION_JSON));
 
         JsonNode result = client.completeJson("sys", "user", "note_summary",
@@ -63,6 +67,20 @@ class GeminiClientTest {
 
         assertThat(result.path("summary").asText()).isEqualTo("Short.");
         server.verify();
+    }
+
+    @Test
+    @DisplayName("JSON schemas drop additionalProperties and map nullable unions for Gemini")
+    void toGeminiSchema() {
+        ObjectNode schema = JsonSchemas.object(Map.of(
+                "title", JsonSchemas.string("t"),
+                "due", JsonSchemas.nullableString("optional")));
+        JsonNode gemini = GeminiClient.toGeminiSchema(schema, mapper);
+
+        assertThat(gemini.path("type").asText()).isEqualTo("OBJECT");
+        assertThat(gemini.has("additionalProperties")).isFalse();
+        assertThat(gemini.path("properties").path("due").path("type").asText()).isEqualTo("STRING");
+        assertThat(gemini.path("properties").path("due").path("nullable").asBoolean()).isTrue();
     }
 
     @Test

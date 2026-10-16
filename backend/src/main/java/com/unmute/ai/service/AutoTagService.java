@@ -67,8 +67,9 @@ public class AutoTagService implements JobHandler {
     public void handle(ClaimedJob job) {
         UUID noteId = job.uuid("noteId");
         boolean force = job.flag("force");
+        boolean fromTranscript = job.flag("fromTranscript");
 
-        Input input = readOnlyTx.execute(status -> load(noteId, force));
+        Input input = readOnlyTx.execute(status -> load(noteId, force, fromTranscript));
         if (input == null) {
             return;
         }
@@ -113,7 +114,7 @@ public class AutoTagService implements JobHandler {
 
     private record Result(UUID userId, List<String> added, List<String> tags) {}
 
-    private Input load(UUID noteId, boolean force) {
+    private Input load(UUID noteId, boolean force, boolean fromTranscript) {
         Note note = noteRepository.findById(noteId).orElse(null);
         if (note == null || (!force && note.getAutoTaggedAt() != null)) {
             return null;
@@ -122,7 +123,7 @@ public class AutoTagService implements JobHandler {
         Set<String> currentTags = new TreeSet<>(note.getTags());
 
         int length = NoteText.toPlainText(note.getContent()).length();
-        int minChars = force ? FORCED_MIN_CHARS : properties.minChars();
+        int minChars = (force || fromTranscript) ? FORCED_MIN_CHARS : properties.minChars();
         if (length < minChars) {
             // Not marked as tagged: the next edit tries again once the note has grown.
             return new Input(userId, null, null, null, currentTags, "too short (" + length + " < " + minChars + " chars)");

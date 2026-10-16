@@ -33,6 +33,7 @@ public class GeminiClient implements LlmClient {
             """;
 
     private final RestClient rest;
+    private final RestClient nativeJson;
     private final RestClient nativeRest;
     private final AiProperties.Gemini properties;
     private final ObjectMapper mapper;
@@ -47,7 +48,12 @@ public class GeminiClient implements LlmClient {
                 .defaultStatusHandler(HttpStatusCode::isError,
                         (request, response) -> { throw HttpErrors.fromResponse(PROVIDER, KEY_VARIABLE, response, mapper); })
                 .build();
-        this.nativeRest = transcriptionBuilder.clone()
+        this.nativeJson = nativeClient(builder);
+        this.nativeRest = nativeClient(transcriptionBuilder);
+    }
+
+    private RestClient nativeClient(RestClient.Builder builder) {
+        return builder.clone()
                 .baseUrl(properties.nativeBaseUrl())
                 .defaultHeader("x-goog-api-key", properties.apiKey())
                 .defaultStatusHandler(HttpStatusCode::isError,
@@ -67,30 +73,97 @@ public class GeminiClient implements LlmClient {
     @Override
     public JsonNode completeJson(String system, String user, String schemaName, ObjectNode schema, boolean lightweight) {
         ObjectNode body = mapper.createObjectNode();
-        body.put("model", properties.chatModel());
-        body.putArray("messages")
-                .add(mapper.createObjectNode().put("role", "system").put("content", system))
-                .add(mapper.createObjectNode().put("role", "user").put("content", user));
-        ObjectNode format = body.putObject("response_format").put("type", "json_schema");
-        format.putObject("json_schema").put("name", schemaName).put("strict", true).set("schema", schema);
-        body.put("max_completion_tokens", properties.maxCompletionTokens());
+        body.putObject("systemInstruction").putArray("parts").addObject().put("text", system);
+        body.putArray("contents").addObject().put("role", "user").putArray("parts").addObject().put("text", user);
+        ObjectNode config = body.putObject("generationConfig");
+        config.put("temperature", lightweight ? 0.1 : 0.4);
+        config.put("maxOutputTokens", properties.maxCompletionTokens());
+        config.put("responseMimeType", "application/json");
+        config.set("responseSchema", toGeminiSchema(schema));
 
-        JsonNode response = call("Gemini", () -> rest.post().uri("/chat/completions")
+        JsonNode response = call("Gemini", () -> nativeJson.post()
+                .uri("/models/{model}:generateContent", properties.chatModel())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
                 .body(JsonNode.class));
 
-        JsonNode choice = response.path("choices").path(0);
-        JsonNode message = choice.path("message");
-        if (message.hasNonNull("refusal") && !message.path("refusal").asText().isBlank()) {
-            throw new AiProviderException(PROVIDER, 200, false,
-                    "The model declined this request: " + message.path("refusal").asText());
+        JsonNode candidate = response.path("candidates").path(0);
+        String finish = candidate.path("finishReason").asText("");
+        if ("SAFETY".equals(finish) || "RECITATION".equals(finish) || "PROHIBITED_CONTENT".equals(finish)) {
+            throw new AiProviderException(PROVIDER, 200, false, "Gemini declined this request (" + finish + ").");
         }
-        if ("length".equals(choice.path("finish_reason").asText())) {
+        if ("MAX_TOKENS".equals(finish)) {
             throw new AiProviderException(PROVIDER, 200, false, "The model ran out of output tokens before finishing.");
         }
-        return parseJson(message.path("content").asText(""));
+        return parseJson(extractText(candidate));
+    }
+
+    /**
+     * Gemini {@code responseSchema} is a JSON-Schema subset: uppercase types, {@code nullable} instead of
+     * type unions, and no {@code additionalProperties}.
+     */
+    static ObjectNode toGeminiSchema(JsonNode schema, ObjectMapper mapper) {
+        ObjectNode out = mapper.createObjectNode();
+        JsonNode typeNode = schema.path("type");
+        if (typeNode.isArray()) {
+            boolean nullable = false;
+            String primary = "STRING";
+            for (JsonNode t : typeNode) {
+                if ("null".equals(t.asText())) {
+                    nullable = true;
+                } else {
+                    primary = geminiType(t.asText());
+                }
+            }
+            out.put("type", primary);
+            if (nullable) {
+                out.put("nullable", true);
+            }
+        } else if (typeNode.isTextual()) {
+            out.put("type", geminiType(typeNode.asText()));
+        }
+        if (schema.hasNonNull("description")) {
+            out.put("description", schema.path("description").asText());
+        }
+        if (schema.has("enum")) {
+            out.set("enum", schema.get("enum").deepCopy());
+        }
+        if (schema.has("properties") && schema.get("properties").isObject()) {
+            ObjectNode props = out.putObject("properties");
+            schema.get("properties").fields().forEachRemaining(entry ->
+                    props.set(entry.getKey(), toGeminiSchema(entry.getValue(), mapper)));
+        }
+        if (schema.has("required")) {
+            out.set("required", schema.get("required").deepCopy());
+        }
+        if (schema.has("items")) {
+            out.set("items", toGeminiSchema(schema.get("items"), mapper));
+        }
+        return out;
+    }
+
+    private ObjectNode toGeminiSchema(JsonNode schema) {
+        return toGeminiSchema(schema, mapper);
+    }
+
+    private static String geminiType(String type) {
+        return switch (type.toLowerCase()) {
+            case "object" -> "OBJECT";
+            case "array" -> "ARRAY";
+            case "integer" -> "INTEGER";
+            case "number" -> "NUMBER";
+            case "boolean" -> "BOOLEAN";
+            default -> "STRING";
+        };
+    }
+
+    private static String extractText(JsonNode candidate) {
+        StringBuilder text = new StringBuilder();
+        for (JsonNode part : candidate.path("content").path("parts")) {
+            text.append(part.path("text").asText(""));
+        }
+        return text.toString();
     }
 
     public float[] embed(String input, int dimensions) {
@@ -152,11 +225,7 @@ public class GeminiClient implements LlmClient {
         if ("MAX_TOKENS".equals(finish)) {
             throw new AiProviderException(PROVIDER, 200, false, "The model ran out of output tokens before finishing.");
         }
-        StringBuilder text = new StringBuilder();
-        for (JsonNode part : candidate.path("content").path("parts")) {
-            text.append(part.path("text").asText(""));
-        }
-        String transcript = text.toString().strip();
+        String transcript = extractText(candidate).strip();
         if (transcript.isBlank()) {
             throw new AiProviderException(PROVIDER, 200, true, "Gemini returned an empty transcript.");
         }

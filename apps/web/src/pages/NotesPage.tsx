@@ -87,8 +87,9 @@ export function NotesPage() {
     isArchived: boolean;
   } | null>(null);
 
-  // Tags just applied by the live auto-tagger, so the editor can sparkle them.
+  // Tags just applied by the live auto-tagger, so the editor and cards can sparkle them.
   const [freshAiTags, setFreshAiTags] = useState<Set<string>>(new Set());
+  const [freshTagsByNote, setFreshTagsByNote] = useState<Map<string, Set<string>>>(() => new Map());
 
   const selectedNoteIdRef = useRef<string | null>(selectedNoteId);
   selectedNoteIdRef.current = selectedNoteId;
@@ -1137,6 +1138,20 @@ export function NotesPage() {
   useLiveEvent((event) => {
     if (event.type === 'note.tagged') {
       const { noteId, addedTags, tags: nextTags } = event.data;
+      if (addedTags.length > 0) {
+        setFreshTagsByNote((prev) => {
+          const next = new Map(prev);
+          next.set(noteId, new Set(addedTags));
+          return next;
+        });
+        setTimeout(() => {
+          setFreshTagsByNote((prev) => {
+            const next = new Map(prev);
+            next.delete(noteId);
+            return next;
+          });
+        }, 8000);
+      }
       if (noteId === selectedNoteIdRef.current) {
         setTags(nextTags);
         tagsRef.current = nextTags;
@@ -1439,14 +1454,21 @@ export function NotesPage() {
                         {/* Tag Pills */}
                         {note.tags && note.tags.length > 0 && (
                           <div className="flex items-center gap-1 overflow-hidden">
-                            {note.tags.slice(0, 2).map((t) => (
-                              <span
-                                key={t}
-                                className="px-1.5 py-0.5 rounded bg-zinc-800/80 text-violet-300 text-[10px]"
-                              >
-                                #{t}
-                              </span>
-                            ))}
+                            {note.tags.slice(0, 2).map((t) => {
+                              const isFresh = freshTagsByNote.get(note.id)?.has(t);
+                              return (
+                                <span
+                                  key={t}
+                                  className={`px-1.5 py-0.5 rounded text-[10px] ${
+                                    isFresh
+                                      ? 'bg-violet-500/30 text-violet-100 border border-violet-400/50'
+                                      : 'bg-zinc-800/80 text-violet-300'
+                                  }`}
+                                >
+                                  #{t}
+                                </span>
+                              );
+                            })}
                             {note.tags.length > 2 && (
                               <span className="text-[10px] text-zinc-500">
                                 +{note.tags.length - 2}
