@@ -1304,7 +1304,7 @@ export function NotesPage() {
 
         {/* Search Bar */}
         <div className="p-3 border-b border-zinc-800/60">
-          <div className="relative">
+          <div className="relative rounded-lg border border-zinc-800 bg-zinc-900/80 focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500 transition-all">
             <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
@@ -1312,7 +1312,7 @@ export function NotesPage() {
               placeholder="Search notes or keywords..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full ps-9 pe-8 py-2 bg-zinc-900/80 border border-zinc-800 rounded-lg text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500/80 focus:ring-1 focus:ring-violet-500/30 transition-all"
+              className="w-full ps-9 pe-8 py-2 bg-transparent border-0 text-xs text-zinc-200 placeholder:text-zinc-500 outline-none focus:outline-none focus:ring-0"
             />
             {searchQuery && (
               <button

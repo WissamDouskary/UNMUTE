@@ -423,7 +423,7 @@ export const KnowledgeGraphPage: React.FC = () => {
               {totalNodes} nodes · {graphData.links.length} links
             </span>
           </div>
-          <div className="flex h-8 w-full sm:w-72 items-center gap-2 rounded-md border border-zinc-800/50 bg-zinc-900/80 px-2.5 backdrop-blur-md focus-within:border-zinc-700">
+          <div className="flex h-8 w-full sm:w-72 items-center gap-2 rounded-lg border border-zinc-800/50 bg-zinc-900/80 px-2.5 backdrop-blur-md focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500">
             <Search className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
             <input
               ref={searchRef}
@@ -435,7 +435,7 @@ export const KnowledgeGraphPage: React.FC = () => {
                 }
               }}
               placeholder="Find a node…"
-              className="min-w-0 flex-1 bg-transparent text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none"
+              className="min-w-0 flex-1 bg-transparent text-xs text-zinc-200 placeholder:text-zinc-500 outline-none focus:outline-none focus:ring-0"
             />
             {query ? (
               <button

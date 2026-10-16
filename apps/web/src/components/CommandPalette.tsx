@@ -138,7 +138,7 @@ export function CommandPalette() {
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="w-full max-w-xl rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/60 overflow-hidden"
+        className="w-full max-w-xl rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/60 overflow-hidden focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-center gap-2 px-3 border-b border-zinc-800">
@@ -164,7 +164,7 @@ export function CommandPalette() {
               }
             }}
             placeholder="Jump to a page, note, or action…"
-            className="flex-1 bg-transparent py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+            className="flex-1 bg-transparent py-3 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:outline-none focus:ring-0"
           />
           <kbd className="hidden sm:inline text-[10px] font-mono text-zinc-500 border border-zinc-800 rounded px-1.5 py-0.5">
             Esc

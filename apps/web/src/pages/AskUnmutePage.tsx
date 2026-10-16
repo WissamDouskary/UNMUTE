@@ -477,7 +477,7 @@ export const AskUnmutePage: React.FC = () => {
       {/* Sleek Bottom Input Bar */}
       <div className="p-4 sm:p-6 border-t border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md shrink-0">
         <div className="max-w-4xl mx-auto relative">
-          <div className="flex items-end gap-2 p-2 rounded-2xl bg-zinc-900 border border-zinc-700/80 focus-within:border-violet-500/80 focus-within:ring-2 focus-within:ring-violet-500/20 transition-all shadow-lg">
+          <div className="flex items-end gap-2 p-2 rounded-2xl bg-zinc-900 border border-zinc-700/80 focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500 transition-all shadow-lg">
             <textarea
               ref={textareaRef}
               rows={2}
@@ -489,7 +489,7 @@ export const AskUnmutePage: React.FC = () => {
                   ? 'Ask anything about your notes, roadmap, tasks, or transcripts... (Enter to send)'
                   : 'Enter vector search query to find semantically related notes...'
               }
-              className="flex-1 bg-transparent border-0 resize-none text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none p-2 min-h-[44px] max-h-32"
+              className="flex-1 bg-transparent border-0 resize-none text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:outline-none focus:ring-0 p-2 min-h-[44px] max-h-32"
             />
 
             <button

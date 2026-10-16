@@ -324,7 +324,7 @@ export function TasksPage() {
             </div>
 
             {/* Search Input */}
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-full sm:w-64 rounded-lg border border-zinc-800/70 bg-zinc-900/60 focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500 transition-all">
               <Search className="w-3 h-3 absolute start-2.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
               <input
                 type="text"
@@ -332,7 +332,7 @@ export function TasksPage() {
                 placeholder="Filter tasks..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full ps-7 pe-6 py-1 bg-zinc-900/60 border border-zinc-800/70 rounded-lg text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500/80 transition-all h-7"
+                className="w-full ps-7 pe-6 py-1 bg-transparent border-0 text-xs text-zinc-200 placeholder:text-zinc-500 outline-none focus:outline-none focus:ring-0 h-7"
               />
               {searchQuery && (
                 <button

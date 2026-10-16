@@ -603,7 +603,7 @@ export const SourcesPage: React.FC = () => {
             </div>
 
             {/* Search Input */}
-            <div className="relative w-full sm:w-72">
+            <div className="relative w-full sm:w-72 rounded-xl border border-zinc-800/80 bg-zinc-900/60 focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500 transition-colors">
               <Search className="w-4 h-4 text-zinc-400 absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
@@ -611,7 +611,7 @@ export const SourcesPage: React.FC = () => {
                 placeholder="Search transcripts or files..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-zinc-900/60 border border-zinc-800/80 rounded-xl ps-9 pe-8 py-1.5 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-indigo-500/60 transition-colors"
+                className="w-full bg-transparent border-0 rounded-xl ps-9 pe-8 py-1.5 text-xs text-white placeholder-zinc-400 outline-none focus:outline-none focus:ring-0"
               />
               {searchQuery && (
                 <button
