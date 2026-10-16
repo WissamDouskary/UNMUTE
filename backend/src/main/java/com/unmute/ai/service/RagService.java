@@ -15,7 +15,7 @@ import java.util.UUID;
  * DB connection. Retrieval opens its own short transaction.
  */
 @Service
-public class RagService {
+public class RagService implements GroundedAnswers {
 
     private final SemanticSearchService semanticSearchService;
     private final AiProvider aiProvider;
