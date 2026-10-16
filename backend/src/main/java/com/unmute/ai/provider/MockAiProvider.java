@@ -18,7 +18,25 @@ public class MockAiProvider implements AiProvider {
 
     private static final Pattern HTML_TAGS_PATTERN = Pattern.compile("<[^>]*>");
     private static final Pattern TASK_ITEM_PATTERN = Pattern.compile("<li[^>]*data-type=[\"']taskItem[\"'][^>]*>(.*?)</li>", Pattern.CASE_INSENSITIVE);
-    private static final Pattern BULLET_OR_LINE_PATTERN = Pattern.compile("(?m)^\\s*(?:[-*•]\\s*(?:\\[[ xX]\\])?|\\d+\\.|TODO:?|Action:?|Task:?)\\s*(.*)$");
+    private static final Pattern BULLET_OR_LINE_PATTERN = Pattern.compile("(?m)^\\s*(?:[-*•]\\s*(?:\\[[ xX]\\])?|\\d+\\.|TODO\\b:?|Action:|Task:)\\s*(.*)$");
+    /** Sentence boundaries plus hard line breaks, so a heading line never fuses with the next sentence. */
+    private static final Pattern SENTENCE_SPLIT = Pattern.compile("(?<=[.!?])\\s+|\\n+");
+    private static final Pattern ACTION_ITEMS_LIST = Pattern.compile("(?i)\\baction items?\\s*:\\s*(.+)");
+    private static final Pattern LIST_SEPARATOR = Pattern.compile("\\s*(?:;|,\\s*and\\s+|,|\\s+and\\s+(?=(?:I|we|you|he|she|they|[A-Z][a-z]+)\\s+(?:will|need|should|must|to)\\b))\\s*");
+    /** "We need three things: first, X" / "Second, we should Y" → "X" / "We should Y". */
+    private static final Pattern ORDINAL_LEAD_IN = Pattern.compile("^(?i)(?:[^:]*:\\s*)?(?:first|second|third|fourth|fifth|next|then|also|finally|lastly)(?:ly)?\\s*,\\s*");
+    private static final Pattern WORD = Pattern.compile("[\\p{L}\\p{N}]{3,}");
+    private static final Pattern OBLIGATION = Pattern.compile("(?i)\\b(?:todo|needs? to|must|should|have to|has to|let's|action items?)\\b");
+    private static final Set<String> ACTION_VERBS = Set.of(
+            "implement", "create", "build", "deploy", "fix", "verify", "review", "prepare", "schedule", "test",
+            "investigate", "update", "draft", "write", "send", "set", "add", "remove", "complete", "finish",
+            "follow", "call", "email", "book", "plan", "refactor", "migrate", "document", "research", "check",
+            "configure", "design", "ship", "release", "organize", "contact", "share", "submit", "clean",
+            "upgrade", "install", "integrate", "audit", "reply", "confirm", "finalize", "launch");
+    private static final Set<String> QUERY_STOP_WORDS = Set.of(
+            "what", "which", "who", "whom", "when", "where", "why", "how", "did", "does", "the", "and", "for",
+            "are", "was", "were", "about", "with", "from", "that", "this", "have", "has", "our", "your", "my",
+            "any", "all", "list", "tell", "show", "decide", "decided", "notes", "note");
 
     @Override
     public SummarizeResponse summarize(String content) {
@@ -89,20 +107,25 @@ public class MockAiProvider implements AiProvider {
 
         // 3. Fallback: If no explicit task syntax found, scan sentences with action verbs
         if (tasks.isEmpty()) {
-            String[] sentences = cleanText.split("(?<=[.!?])\\s+");
-            for (String sentence : sentences) {
-                String trimmed = sentence.trim();
-                if (isActionable(trimmed)) {
-                    addTaskIfValid(trimmed, tasks, seenTitles, "Inferred action item from note text.");
-                    if (tasks.size() >= 5) break;
+            for (String sentence : sentences(cleanText)) {
+                if (isMetadataLine(sentence)) continue;
+
+                Matcher actionItems = ACTION_ITEMS_LIST.matcher(sentence);
+                if (actionItems.find()) {
+                    for (String item : LIST_SEPARATOR.split(actionItems.group(1))) {
+                        addTaskIfValid(stripTrailingPunctuation(item), tasks, seenTitles, "Extracted from meeting action items.");
+                    }
+                } else if (isActionable(sentence)) {
+                    addTaskIfValid(sentence, tasks, seenTitles, "Inferred action item from note text.");
                 }
+                if (tasks.size() >= 8) break;
             }
         }
 
         // 4. Default if still empty but content exists
         if (tasks.isEmpty() && !cleanText.isBlank()) {
             tasks.add(new ExtractedTaskItem(
-                    "Review and follow up on note notes",
+                    "Review and follow up on this note",
                     "Synthesized from captured content: " + cleanText.substring(0, Math.min(cleanText.length(), 60)) + "...",
                     TaskPriority.MEDIUM,
                     Instant.now().plus(2, ChronoUnit.DAYS),
@@ -117,9 +140,11 @@ public class MockAiProvider implements AiProvider {
         if (titleCandidate == null || titleCandidate.length() < 3) return;
 
         // Clean common prefixes
-        String clean = titleCandidate
-                .replaceAll("^(?i)(TODO:?|Action:?|Task:?|\\[[ xX]\\])\\s*", "")
-                .trim();
+        String clean = stripTrailingPunctuation(ORDINAL_LEAD_IN.matcher(titleCandidate
+                .replaceAll("^(?i)(TODO\\b:?|Action:|Task:|\\[[ xX]\\])\\s*", "")
+                .trim()).replaceFirst(""));
+        if (clean.length() < 3) return;
+        clean = Character.toUpperCase(clean.charAt(0)) + clean.substring(1);
 
         if (clean.length() > 255) {
             clean = clean.substring(0, 252) + "...";
@@ -140,23 +165,65 @@ public class MockAiProvider implements AiProvider {
         ));
     }
 
+    private static List<String> sentences(String cleanText) {
+        List<String> out = new ArrayList<>();
+        for (String s : SENTENCE_SPLIT.split(cleanText)) {
+            String trimmed = s.trim();
+            if (!trimmed.isEmpty()) out.add(trimmed);
+        }
+        return out;
+    }
+
+    /** Transcript notes open with a generated header ("🎙 Voice Recording Transcript", "Source: x • Duration: y"). */
+    private static boolean isMetadataLine(String line) {
+        String lower = line.toLowerCase(Locale.ROOT);
+        return lower.contains("voice recording transcript")
+                || lower.startsWith("source:")
+                || lower.matches(".*\\bduration:\\s*\\d+:\\d{2}.*");
+    }
+
+    private static String stripTrailingPunctuation(String text) {
+        return text.replaceAll("[\\s.;,:]+$", "").trim();
+    }
+
+    private static Set<String> keywords(String text) {
+        Set<String> words = new HashSet<>();
+        Matcher m = WORD.matcher(text.toLowerCase(Locale.ROOT));
+        while (m.find()) {
+            String w = m.group();
+            if (!QUERY_STOP_WORDS.contains(w)) words.add(w);
+        }
+        return words;
+    }
+
+    /** Picks the sentence sharing the most keywords with the question; falls back to the first real sentence. */
+    private static String bestSnippet(String question, String cleanContent) {
+        Set<String> queryWords = keywords(question);
+        String best = null;
+        int bestScore = -1;
+        for (String sentence : sentences(cleanContent)) {
+            if (isMetadataLine(sentence) || sentence.length() < 12) continue;
+            Set<String> words = keywords(sentence);
+            words.retainAll(queryWords);
+            if (words.size() > bestScore) {
+                bestScore = words.size();
+                best = sentence;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * A sentence is actionable if it carries an obligation ("need to", "must", "TODO") or is imperative
+     * (starts with an action verb). Substring matching on verbs alone flagged noun uses such as
+     * "notes from the architecture review" or "latest test results".
+     */
     private boolean isActionable(String text) {
-        String lower = text.toLowerCase();
-        return lower.contains("todo")
-                || lower.contains("need to")
-                || lower.contains("must")
-                || lower.contains("should")
-                || lower.contains("implement")
-                || lower.contains("create")
-                || lower.contains("build")
-                || lower.contains("deploy")
-                || lower.contains("fix")
-                || lower.contains("verify")
-                || lower.contains("review")
-                || lower.contains("prepare")
-                || lower.contains("schedule")
-                || lower.contains("test")
-                || lower.contains("investigate");
+        if (OBLIGATION.matcher(text).find()) {
+            return true;
+        }
+        Matcher firstWord = WORD.matcher(text.toLowerCase(Locale.ROOT));
+        return firstWord.find() && ACTION_VERBS.contains(firstWord.group());
     }
 
     private TaskPriority inferPriority(String text) {
@@ -223,16 +290,12 @@ public class MockAiProvider implements AiProvider {
             String cleanContent = stripHtml(note.content() != null ? note.content() : "");
             String cleanSummary = note.summary() != null ? stripHtml(note.summary()) : "";
 
-            // Pick the best snippet
-            String snippet;
-            if (!cleanSummary.isBlank()) {
+            // Prefer the passage that actually answers the question over a generic first line or summary.
+            String snippet = bestSnippet(question, cleanContent);
+            if (snippet == null && !cleanSummary.isBlank()) {
                 snippet = cleanSummary;
-            } else if (!cleanContent.isBlank()) {
-                String[] sentences = cleanContent.split("(?<=[.!?])\\s+");
-                snippet = (sentences.length > 0 && !sentences[0].isBlank())
-                        ? sentences[0].trim()
-                        : cleanContent.substring(0, Math.min(cleanContent.length(), 140));
-            } else {
+            }
+            if (snippet == null) {
                 snippet = "Reference note titled '" + note.title() + "'.";
             }
 

@@ -76,7 +76,7 @@ public class MockEmbeddingProvider implements EmbeddingProvider {
         // If no non-stopword tokens were found, use fallback token hashing
         if (tokenCount == 0) {
             for (char c : text.toCharArray()) {
-                int idx = Math.abs(Character.hashCode(c)) % DIMENSION;
+                int idx = Math.abs(Character.hashCode(c) % DIMENSION);
                 vector[idx] += 1.0f;
             }
         }
@@ -100,7 +100,9 @@ public class MockEmbeddingProvider implements EmbeddingProvider {
     }
 
     private void project(float[] vector, int hash, float weight) {
-        int idx = Math.abs(hash) % DIMENSION;
+        // abs after the modulo: Math.abs(Integer.MIN_VALUE) stays negative and would index out of bounds.
+        // Same bucket as Math.abs(hash) % DIMENSION for every other hash, so stored vectors stay valid.
+        int idx = Math.abs(hash % DIMENSION);
         // Sign bit gives +/- direction for pseudo-random distribution
         float sign = ((hash & 1) == 0) ? 1.0f : -1.0f;
         vector[idx] += sign * weight;
