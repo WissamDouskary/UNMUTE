@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
@@ -10,6 +10,7 @@ import {
   FileText,
   Hash,
   Loader2,
+  Box,
   Maximize2,
   Radio,
   RefreshCw,
@@ -19,6 +20,11 @@ import {
 } from 'lucide-react';
 import { apiClient, type GraphEdgeType, type GraphNode, type GraphNodeType } from '@unmute/api-client';
 import { cn } from '../lib/utils';
+import type { KnowledgeGraph3DHandle } from '../components/graph/KnowledgeGraph3D';
+
+const KnowledgeGraph3D = lazy(() =>
+  import('../components/graph/KnowledgeGraph3D').then((mod) => ({ default: mod.KnowledgeGraph3D })),
+);
 
 type NodeData = GraphNode & { degree: number };
 type LinkData = { id: string; type: GraphEdgeType };
@@ -99,6 +105,7 @@ export const KnowledgeGraphPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const graphRef = useRef<ForceGraphMethods<GNode, GLink> | undefined>(undefined);
+  const graph3dRef = useRef<KnowledgeGraph3DHandle>(null);
   const nodeCache = useRef(new Map<string, GNode>());
   const hasFittedRef = useRef(false);
   const lastClickRef = useRef<{ id: string; at: number } | null>(null);
@@ -109,6 +116,7 @@ export const KnowledgeGraphPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<'2d' | '3d'>('2d');
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['graph', 'topology', includeArchived],
@@ -264,7 +272,10 @@ export const KnowledgeGraphPage: React.FC = () => {
     });
   };
 
-  const zoomToFit = () => graphRef.current?.zoomToFit(500, 60);
+  const zoomToFit = () => {
+    if (view === '3d') graph3dRef.current?.zoomToFit();
+    else graphRef.current?.zoomToFit(500, 60);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -373,7 +384,26 @@ export const KnowledgeGraphPage: React.FC = () => {
         backgroundSize: '22px 22px',
       }}
     >
-      {canRenderGraph && (
+      {canRenderGraph && view === '3d' && (
+        <Suspense
+          fallback={
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-500">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Opening 3D space…
+            </div>
+          }
+        >
+          <KnowledgeGraph3D
+            ref={graph3dRef}
+            graphData={graphData}
+            width={size.width}
+            height={size.height}
+            onOpen={(node) => openNode(node)}
+          />
+        </Suspense>
+      )}
+
+      {canRenderGraph && view === '2d' && (
         <ForceGraph2D<NodeData, LinkData>
           ref={graphRef}
           width={size.width}
@@ -497,6 +527,31 @@ export const KnowledgeGraphPage: React.FC = () => {
             Archived
           </button>
 
+          <div className="mx-0.5 h-4 w-px bg-zinc-800" />
+          <div className="flex items-center rounded bg-zinc-950/60 p-0.5">
+            <button
+              type="button"
+              onClick={() => setView('2d')}
+              className={cn(
+                'h-5 rounded px-1.5 text-[10px] font-medium',
+                view === '2d' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300',
+              )}
+            >
+              2D
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('3d')}
+              className={cn(
+                'flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-medium',
+                view === '3d' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300',
+              )}
+            >
+              <Box className="h-3 w-3" />
+              3D
+            </button>
+          </div>
+
           <button
             onClick={() => refetch()}
             title="Refresh"
@@ -517,7 +572,7 @@ export const KnowledgeGraphPage: React.FC = () => {
       </div>
 
       {/* Selection inspector */}
-      {selectedNode && (
+      {view === '2d' && selectedNode && (
         <NodeInspector
           node={selectedNode}
           neighborIds={[...(neighbors.get(selectedNode.id as string) ?? [])]}
