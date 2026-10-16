@@ -12,6 +12,8 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.ArrayList;
@@ -113,6 +115,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
                 .body(new ApiErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), "The uploaded file is too large"));
+    }
+
+    /** A client closed a streaming response (live events tab closed); there is no one left to answer. */
+    @ExceptionHandler({AsyncRequestNotUsableException.class, AsyncRequestTimeoutException.class})
+    public void handleClosedStream(Exception ex) {
+        log.debug("Streaming response ended: {}", ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

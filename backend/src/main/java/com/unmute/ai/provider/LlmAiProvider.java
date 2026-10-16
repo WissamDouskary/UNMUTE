@@ -61,6 +61,23 @@ public class LlmAiProvider implements AiProvider {
             - In citations, give the index of every note you used and a short verbatim quote (under 200 \
             characters) from it that supports the answer.""";
 
+    static final String TAGS_SYSTEM = """
+            You tag notes in the user's personal knowledge base so related notes can be found together.
+            Suggest up to %d tags for the note.
+            - Prefer tags from the user's existing tags (listed in <existing_tags>) whenever one fits; only \
+            invent a new tag for a clearly distinct topic.
+            - Tags are specific topics, projects, technologies, people, places or note types, e.g. \
+            "product-roadmap", "kafka", "hiring", "meeting-notes".
+            - Lowercase, 1-3 words joined with hyphens, in the note's language.
+            - Avoid vague tags such as "note", "misc", "ideas", "important", "voice-note" or "transcription".
+            - Return fewer tags, or none, if the note is too vague to tag well.""";
+
+    private static final ObjectNode TAGS_SCHEMA = JsonSchemas.object(Map.of(
+            "tags", JsonSchemas.arrayOf(JsonSchemas.string("one tag in lowercase kebab-case"), "suggested tags")));
+
+    private static final int MAX_TAG_NOTE_CHARS = 12_000;
+    private static final int MAX_VOCABULARY = 200;
+
     private static final ObjectNode SUMMARY_SCHEMA = JsonSchemas.object(linked(
             "summary", JsonSchemas.string("2-3 sentence summary of the note"),
             "keyPoints", JsonSchemas.arrayOf(JsonSchemas.string("one key point"), "3-5 key points")));
@@ -183,6 +200,25 @@ public class LlmAiProvider implements AiProvider {
             throw new AiProviderException(llm.describe(), 200, true, "The model returned an empty answer.");
         }
         return new AskResponse(answer, citations(result.path("citations"), included, answer));
+    }
+
+    @Override
+    public List<String> suggestTags(String title, String content, List<String> vocabulary, int maxTags) {
+        String text = NoteText.toPlainText(content);
+        StringBuilder user = new StringBuilder("<existing_tags>")
+                .append(String.join(", ", vocabulary.subList(0, Math.min(vocabulary.size(), MAX_VOCABULARY))))
+                .append("</existing_tags>\n\n<note title=\"").append(attr(title)).append("\">\n")
+                .append(NoteText.truncate(text, MAX_TAG_NOTE_CHARS))
+                .append("\n</note>");
+
+        JsonNode result = llm.completeJson(TAGS_SYSTEM.formatted(maxTags), user.toString(), "note_tags", TAGS_SCHEMA, true);
+        List<String> tags = new ArrayList<>();
+        for (JsonNode tag : result.path("tags")) {
+            if (tag.isTextual()) {
+                tags.add(tag.asText());
+            }
+        }
+        return tags;
     }
 
     /** Uses the model's cited indices; falls back to [Note: title] markers in the answer if it gave none. */

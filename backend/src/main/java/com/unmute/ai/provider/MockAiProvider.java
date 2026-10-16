@@ -35,6 +35,50 @@ public class MockAiProvider implements AiProvider {
             "are", "was", "were", "about", "with", "from", "that", "this", "have", "has", "our", "your", "my",
             "any", "all", "list", "tell", "show", "decide", "decided", "notes", "note");
 
+    private static final Set<String> TAG_STOP_WORDS = Set.of(
+            "that", "this", "with", "from", "have", "will", "need", "needs", "should", "would", "could", "about",
+            "there", "their", "they", "them", "then", "than", "what", "when", "which", "where", "while", "also",
+            "into", "some", "been", "were", "just", "like", "more", "most", "very", "only", "over", "such", "make",
+            "each", "much", "here", "first", "second", "third", "next", "week", "today", "tomorrow", "think",
+            "going", "want", "thing", "things", "really", "still", "because", "after", "before", "other", "these",
+            "those", "being", "through", "source", "duration", "voice", "recording", "transcript", "alright",
+            "okay", "your", "yours", "ours", "mine", "does", "done", "doing", "said", "says", "know", "good",
+            "well", "back", "time", "able", "around", "every", "many", "same", "sure", "yeah", "maybe", "note");
+
+    /** Reuses existing tags the note mentions, then adds words that recur in it. */
+    @Override
+    public List<String> suggestTags(String title, String content, List<String> vocabulary, int maxTags) {
+        int limit = Math.min(maxTags, 3);
+        String text = ((title != null ? title : "") + "\n" + stripHtml(content)).toLowerCase(Locale.ROOT);
+        String padded = " " + text.replaceAll("[^\\p{L}\\p{N}]+", " ") + " ";
+
+        List<String> tags = new ArrayList<>();
+        for (String tag : vocabulary) {
+            if (tags.size() >= limit) break;
+            if (padded.contains(" " + tag.replace('-', ' ') + " ")) {
+                tags.add(tag);
+            }
+        }
+
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        Matcher words = WORD.matcher(text);
+        while (words.find()) {
+            String word = words.group();
+            if (word.length() >= 4 && !TAG_STOP_WORDS.contains(word) && !QUERY_STOP_WORDS.contains(word)
+                    && !word.chars().allMatch(Character::isDigit)) {
+                counts.merge(word, 1, Integer::sum);
+            }
+        }
+        counts.entrySet().stream()
+                .filter(e -> e.getValue() >= 2)
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .map(Map.Entry::getKey)
+                .filter(word -> tags.stream().noneMatch(t -> t.contains(word)))
+                .limit(Math.max(0, limit - tags.size()))
+                .forEach(tags::add);
+        return tags;
+    }
+
     @Override
     public SummarizeResponse summarize(String content) {
         String cleanText = stripHtml(content).trim();

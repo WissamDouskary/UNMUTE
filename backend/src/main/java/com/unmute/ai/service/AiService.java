@@ -55,11 +55,20 @@ public class AiService {
             tx.executeWithoutResult(status -> noteRepository.findByIdAndUserId(request.noteId(), userId).ifPresent(note -> {
                 note.setSummary(response.summary());
                 noteRepository.save(note);
-                noteJobs.contentChanged(note.getId());
+                noteJobs.noteChanged(note);
             }));
         }
 
         return response;
+    }
+
+    /** Queues tagging for one of the user's notes; the result arrives as a {@code note.tagged} live event. */
+    public void requestAutoTag(UUID userId, UUID noteId) {
+        tx.executeWithoutResult(status -> {
+            noteRepository.findByIdAndUserId(noteId, userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Note not found with id: " + noteId));
+            noteJobs.requestAutoTag(noteId);
+        });
     }
 
     public ExtractTasksResponse extractTasks(UUID userId, ExtractTasksRequest request) {

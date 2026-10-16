@@ -1,5 +1,6 @@
 package com.unmute.ai.controller;
 
+import com.unmute.ai.dto.AutoTagRequest;
 import com.unmute.ai.dto.ExtractTasksRequest;
 import com.unmute.ai.dto.ExtractTasksResponse;
 import com.unmute.ai.dto.SummarizeRequest;
@@ -17,6 +18,8 @@ import com.unmute.ai.dto.AskResponse;
 import com.unmute.ai.service.RagService;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/ai")
@@ -55,6 +58,17 @@ public class AiController {
         requirePrincipal(principal);
         ExtractTasksResponse response = aiService.extractTasks(principal.getId(), request);
         return ResponseEntity.ok(response);
+    }
+
+    /** 202: tagging runs on the job queue and the outcome is pushed as a live event. */
+    @PostMapping("/auto-tag")
+    public ResponseEntity<Map<String, String>> autoTag(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody AutoTagRequest request
+    ) {
+        requirePrincipal(principal);
+        aiService.requestAutoTag(principal.getId(), request.noteId());
+        return ResponseEntity.accepted().body(Map.of("status", "queued"));
     }
 
     @PostMapping("/ask")

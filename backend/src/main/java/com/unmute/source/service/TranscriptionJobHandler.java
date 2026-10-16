@@ -9,6 +9,8 @@ import com.unmute.jobs.JobQueue;
 import com.unmute.jobs.JobSpec;
 import com.unmute.jobs.JobTypes;
 import com.unmute.jobs.NonRetryableJobException;
+import com.unmute.live.LiveEventService;
+import com.unmute.live.LiveEventTypes;
 import com.unmute.note.domain.Note;
 import com.unmute.note.repository.NoteRepository;
 import com.unmute.source.domain.Source;
@@ -54,6 +56,7 @@ public class TranscriptionJobHandler implements JobHandler {
     private final TranscriptionService transcriptionService;
     private final NoteJobScheduler noteJobs;
     private final JobQueue jobQueue;
+    private final LiveEventService liveEvents;
     private final TransactionTemplate tx;
 
     public TranscriptionJobHandler(SourceRepository sourceRepository,
@@ -63,6 +66,7 @@ public class TranscriptionJobHandler implements JobHandler {
                                    TranscriptionService transcriptionService,
                                    NoteJobScheduler noteJobs,
                                    JobQueue jobQueue,
+                                   LiveEventService liveEvents,
                                    PlatformTransactionManager transactionManager) {
         this.sourceRepository = sourceRepository;
         this.userRepository = userRepository;
@@ -71,6 +75,7 @@ public class TranscriptionJobHandler implements JobHandler {
         this.transcriptionService = transcriptionService;
         this.noteJobs = noteJobs;
         this.jobQueue = jobQueue;
+        this.liveEvents = liveEvents;
         this.tx = new TransactionTemplate(transactionManager);
     }
 
@@ -117,6 +122,7 @@ public class TranscriptionJobHandler implements JobHandler {
                     source.setStatus(SourceStatus.PENDING);
                     source.setErrorMessage(truncate("Attempt " + job.attempt() + " of " + job.maxAttempts()
                             + " failed, retrying shortly: " + messageOf(error)));
+                    publishStatus(source.getUser().getId(), source);
                 }));
     }
 
@@ -128,6 +134,7 @@ public class TranscriptionJobHandler implements JobHandler {
                 .ifPresent(source -> {
                     source.setStatus(SourceStatus.FAILED);
                     source.setErrorMessage(truncate(messageOf(error)));
+                    publishStatus(source.getUser().getId(), source);
                 }));
     }
 
@@ -163,6 +170,7 @@ public class TranscriptionJobHandler implements JobHandler {
             return null;
         }
         source.setStatus(SourceStatus.TRANSCRIBING);
+        publishStatus(source.getUser().getId(), source);
         log.info("Source {} status set to TRANSCRIBING", sourceId);
         return new Work(source.getUser().getId(), source.getFilename(), source.getFileType(), source.getOriginalName());
     }
@@ -192,8 +200,17 @@ public class TranscriptionJobHandler implements JobHandler {
         source.setStatus(SourceStatus.COMPLETED);
         source.setErrorMessage(null);
 
-        noteJobs.contentChanged(note.getId());
+        noteJobs.transcriptNoteCreated(note);
+        liveEvents.publish(work.userId(), LiveEventTypes.NOTE_CREATED,
+                new LiveEventTypes.NoteCreated(note.getId(), note.getTitle(), sourceId));
+        publishStatus(work.userId(), source);
         log.info("Transcription completed for source {} -> Note {}", sourceId, note.getId());
+    }
+
+    /** Sent after commit, so a tab that refetches on the event sees the new status. */
+    private void publishStatus(UUID userId, Source source) {
+        liveEvents.publish(userId, LiveEventTypes.SOURCE_UPDATED, new LiveEventTypes.SourceUpdated(
+                source.getId(), source.getStatus().name(), source.getNote() != null ? source.getNote().getId() : null));
     }
 
     private static String messageOf(Exception error) {

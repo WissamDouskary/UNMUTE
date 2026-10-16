@@ -3,14 +3,20 @@ package com.unmute.note.domain;
 import com.unmute.auth.domain.User;
 import jakarta.persistence.*;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * {@code @DynamicUpdate}: background jobs (auto-tagging, summaries) and the editor's autosave write the same
+ * row concurrently; updating only changed columns keeps one from overwriting the other's fields.
+ */
 @Entity
 @Table(name = "notes")
+@DynamicUpdate
 public class Note {
 
     @Id
@@ -47,6 +53,9 @@ public class Note {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "auto_tagged_at")
+    private Instant autoTaggedAt;
 
     public Note() {
     }
@@ -129,8 +138,22 @@ public class Note {
         return tags;
     }
 
+    /**
+     * Updates the managed collection in place, so Hibernate writes only the added and removed rows instead
+     * of deleting and re-inserting every tag (which races with concurrent tag additions).
+     */
     public void setTags(Set<String> tags) {
-        this.tags = tags != null ? tags : new HashSet<>();
+        Set<String> next = tags != null ? tags : Set.of();
+        this.tags.retainAll(next);
+        this.tags.addAll(next);
+    }
+
+    public Instant getAutoTaggedAt() {
+        return autoTaggedAt;
+    }
+
+    public void setAutoTaggedAt(Instant autoTaggedAt) {
+        this.autoTaggedAt = autoTaggedAt;
     }
 
     public Instant getCreatedAt() {

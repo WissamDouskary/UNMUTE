@@ -52,7 +52,7 @@ public class NoteService {
         }
 
         Note saved = noteRepository.save(note);
-        noteJobs.contentChanged(saved.getId());
+        noteJobs.noteChanged(saved);
         return NoteDto.fromEntity(saved);
     }
 
@@ -110,7 +110,7 @@ public class NoteService {
 
         Note updated = noteRepository.save(note);
         if (!EmbeddableFields.of(updated).equals(embeddableBefore)) {
-            noteJobs.contentChanged(updated.getId());
+            noteJobs.noteChanged(updated);
         }
         return NoteDto.fromEntity(updated);
     }

@@ -17,6 +17,17 @@ class MockAiProviderTest {
     }
 
     @Test
+    @DisplayName("Suggested tags reuse existing vocabulary, then recurring words, skipping filler")
+    void suggestsTags() {
+        List<String> tags = provider.suggestTags("Architecture review",
+                "<p>We discussed Kafka for the event bus. Kafka clusters need monitoring, and the event schema "
+                        + "registry should be shared. Kafka topics map to services.</p>",
+                List.of("architecture", "hiring", "event-bus"), 5);
+
+        assertEquals(List.of("architecture", "event-bus", "kafka"), tags);
+    }
+
+    @Test
     @DisplayName("Transcript header lines never become tasks")
     void skipsTranscriptMetadata() {
         List<String> titles = titles("""
