@@ -198,4 +198,67 @@ public class MockAiProvider implements AiProvider {
                 .replaceAll("\\n{2,}", "\n")
                 .trim();
     }
+
+    @Override
+    public com.unmute.ai.dto.AskResponse generateRagAnswer(String question, List<com.unmute.ai.dto.SemanticSearchResultDto> relevantNotes) {
+        if (relevantNotes == null || relevantNotes.isEmpty()) {
+            return new com.unmute.ai.dto.AskResponse(
+                    "I searched through your knowledge base in UNMUTE, but couldn't find any relevant notes or transcripts matching **\"" +
+                            question.trim() + "\"**.\n\n" +
+                            "💡 *Tip: Try broader search terms, or capture a new voice note or thought in Sources.*",
+                    Collections.emptyList()
+            );
+        }
+
+        List<com.unmute.ai.dto.CitationDto> citations = new ArrayList<>();
+        StringBuilder answerBuilder = new StringBuilder();
+
+        answerBuilder.append("Based on your knowledge base, here is the synthesized answer to **\"")
+                .append(question.trim())
+                .append("\"**:\n\n");
+
+        for (int i = 0; i < Math.min(relevantNotes.size(), 4); i++) {
+            com.unmute.ai.dto.SemanticSearchResultDto note = relevantNotes.get(i);
+
+            String cleanContent = stripHtml(note.content() != null ? note.content() : "");
+            String cleanSummary = note.summary() != null ? stripHtml(note.summary()) : "";
+
+            // Pick the best snippet
+            String snippet;
+            if (!cleanSummary.isBlank()) {
+                snippet = cleanSummary;
+            } else if (!cleanContent.isBlank()) {
+                String[] sentences = cleanContent.split("(?<=[.!?])\\s+");
+                snippet = (sentences.length > 0 && !sentences[0].isBlank())
+                        ? sentences[0].trim()
+                        : cleanContent.substring(0, Math.min(cleanContent.length(), 140));
+            } else {
+                snippet = "Reference note titled '" + note.title() + "'.";
+            }
+
+            if (snippet.length() > 160) {
+                snippet = snippet.substring(0, 157) + "...";
+            }
+
+            citations.add(new com.unmute.ai.dto.CitationDto(
+                    note.noteId(),
+                    note.title(),
+                    snippet,
+                    note.similarity()
+            ));
+
+            answerBuilder.append("• **")
+                    .append(note.title())
+                    .append("** ([Note: ")
+                    .append(note.title())
+                    .append("]): ")
+                    .append(snippet)
+                    .append("\n\n");
+        }
+
+        answerBuilder.append("These insights were retrieved using vector semantic similarity across your personal second brain.");
+
+        return new com.unmute.ai.dto.AskResponse(answerBuilder.toString(), citations);
+    }
 }
+

@@ -6,8 +6,9 @@ WORKDIR /app
 # Copy the built JAR from target directory
 COPY target/unmute-backend-0.1.0-SNAPSHOT.jar app.jar
 
-# Non-root user for security
-RUN groupadd -r unmute && useradd -r -g unmute unmute
+# Create uploads directory and set permissions
+RUN groupadd -r unmute && useradd -r -g unmute unmute \
+    && mkdir -p /app/uploads && chown -R unmute:unmute /app
 USER unmute
 
 EXPOSE 8080

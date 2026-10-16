@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -30,10 +30,13 @@ type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
 export function NotesPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
+  const urlNoteId = searchParams.get('noteId');
+
   // --- Filtering & Selection State ---
-  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(urlNoteId || null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -120,7 +123,44 @@ export function NotesPage() {
     placeholderData: keepPreviousData,
   });
 
-  const notes = useMemo(() => notesData ?? [], [notesData]);
+  // Direct fetch when urlNoteId is present to guarantee instant resolution
+  const { data: directNote } = useQuery({
+    queryKey: ['note', urlNoteId],
+    queryFn: () => (urlNoteId ? apiClient.getNote(urlNoteId) : null),
+    enabled: Boolean(urlNoteId),
+  });
+
+  // Handle incoming urlNoteId (e.g. redirected from Capture Engine "View Note")
+  useEffect(() => {
+    if (urlNoteId) {
+      setSelectedNoteId(urlNoteId);
+      setActiveTab('all');
+      setSelectedTag(null);
+      setSearchQuery('');
+      // Invalidate notes list query to ensure freshly created background notes are fetched
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    }
+  }, [urlNoteId, queryClient]);
+
+  // If directNote arrives and is not yet in notesData cache, inject it into the cache
+  useEffect(() => {
+    if (directNote) {
+      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
+        if (!old) return [directNote];
+        if (old.some((n) => n.id === directNote.id)) return old;
+        return [directNote, ...old];
+      });
+      setSelectedNoteId(directNote.id);
+    }
+  }, [directNote, queryClient]);
+
+  const notes = useMemo(() => {
+    const list = notesData ?? [];
+    if (directNote && !list.some((n) => n.id === directNote.id)) {
+      return [directNote, ...list];
+    }
+    return list;
+  }, [notesData, directNote]);
 
   // 2. TanStack Query: Fetch Available Tags
   const { data: availableTags = [] } = useQuery({
@@ -140,17 +180,25 @@ export function NotesPage() {
     const first = notes[0];
     if (first) {
       if (!selectedNoteId || !notes.some((n) => n.id === selectedNoteId)) {
+        // If an explicit note is targeted in URL, preserve it while resolving
+        if (urlNoteId && (selectedNoteId === urlNoteId || !selectedNoteId)) {
+          return;
+        }
         setSelectedNoteId(first.id);
       }
-    } else {
+    } else if (!urlNoteId) {
       setSelectedNoteId(null);
     }
-  }, [notes, selectedNoteId]);
+  }, [notes, selectedNoteId, urlNoteId]);
 
   // Active Note reference
   const activeNote = useMemo(() => {
-    return notes.find((n) => n.id === selectedNoteId) || null;
-  }, [notes, selectedNoteId]);
+    return (
+      notes.find((n) => n.id === selectedNoteId) ||
+      (directNote?.id === selectedNoteId ? directNote : null) ||
+      null
+    );
+  }, [notes, selectedNoteId, directNote]);
 
   const activeNoteRef = useRef<Note | null>(activeNote);
   activeNoteRef.current = activeNote;
@@ -376,6 +424,9 @@ export function NotesPage() {
       queryClient.invalidateQueries({ queryKey: ['tags'] });
 
       setSelectedNoteId(newNote.id);
+      if (urlNoteId) {
+        setSearchParams({ noteId: newNote.id }, { replace: true });
+      }
       setTitle(newNote.title);
       setContent(newNote.content || '<p></p>');
       setTags(newNote.tags || []);
@@ -1246,6 +1297,9 @@ export function NotesPage() {
                       toggleNoteSelection(note.id);
                     } else {
                       setSelectedNoteId(note.id);
+                      if (urlNoteId && urlNoteId !== note.id) {
+                        setSearchParams({ noteId: note.id }, { replace: true });
+                      }
                     }
                   }}
                   className={`group relative p-3 rounded-xl cursor-pointer transition-all ${

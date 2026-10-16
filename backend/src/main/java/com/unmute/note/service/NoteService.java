@@ -9,6 +9,7 @@ import com.unmute.note.dto.CreateNoteRequest;
 import com.unmute.note.dto.NoteDto;
 import com.unmute.note.dto.UpdateNoteRequest;
 import com.unmute.note.repository.NoteRepository;
+import com.unmute.ai.service.EmbeddingService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,10 +26,16 @@ public class NoteService {
 
     private final NoteRepository noteRepository;
     private final UserRepository userRepository;
+    private final EmbeddingService embeddingService;
 
-    public NoteService(NoteRepository noteRepository, UserRepository userRepository) {
+    public NoteService(
+            NoteRepository noteRepository,
+            UserRepository userRepository,
+            EmbeddingService embeddingService
+    ) {
         this.noteRepository = noteRepository;
         this.userRepository = userRepository;
+        this.embeddingService = embeddingService;
     }
 
     public NoteDto createNote(UUID userId, CreateNoteRequest request) {
@@ -44,6 +51,7 @@ public class NoteService {
         }
 
         Note saved = noteRepository.save(note);
+        embeddingService.syncNoteEmbedding(saved);
         return NoteDto.fromEntity(saved);
     }
 
@@ -99,6 +107,7 @@ public class NoteService {
         }
 
         Note updated = noteRepository.save(note);
+        embeddingService.syncNoteEmbedding(updated);
         return NoteDto.fromEntity(updated);
     }
 
@@ -123,6 +132,7 @@ public class NoteService {
     public void deleteNote(UUID userId, UUID noteId) {
         Note note = noteRepository.findByIdAndUserId(noteId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Note not found with id: " + noteId));
+        embeddingService.deleteNoteEmbedding(noteId);
         noteRepository.delete(note);
     }
 

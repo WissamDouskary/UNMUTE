@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Menu,
   X,
+  Sparkles,
 } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
@@ -23,12 +24,15 @@ export const AppShell: React.FC = () => {
 
   const isFullBleed =
     location.pathname.startsWith('/notes') ||
-    location.pathname.startsWith('/tasks');
+    location.pathname.startsWith('/tasks') ||
+    location.pathname.startsWith('/sources') ||
+    location.pathname.startsWith('/ask');
   const getPageTitle = () => {
     if (location.pathname.startsWith('/notes')) return 'Notes & Knowledge';
     if (location.pathname.startsWith('/tasks')) return 'Tasks & Actions';
     if (location.pathname.startsWith('/projects')) return 'Projects';
     if (location.pathname.startsWith('/sources')) return 'Sources';
+    if (location.pathname.startsWith('/ask')) return 'Ask UNMUTE (RAG)';
     if (location.pathname.startsWith('/settings')) return 'Settings';
     return 'Overview';
   };
@@ -46,6 +50,7 @@ export const AppShell: React.FC = () => {
 
   const navItems = [
     { name: 'Dashboard', to: '/', icon: LayoutDashboard, exact: true },
+    { name: 'Ask UNMUTE', to: '/ask', icon: Sparkles, badge: 'Phase 5' },
     { name: 'Notes', to: '/notes', icon: FileText, badge: 'Phase 2' },
     { name: 'Tasks', to: '/tasks', icon: CheckSquare, badge: 'Phase 3' },
     { name: 'Projects', to: '/projects', icon: FolderGit2, badge: 'Phase 3' },
@@ -226,6 +231,15 @@ export const AppShell: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/ask')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-600/10 hover:bg-violet-600/20 border border-violet-500/30 text-xs font-medium text-violet-300 hover:text-white transition-all shadow-sm cursor-pointer"
+              title="Launch Ask UNMUTE RAG Assistant"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+              <span>Ask UNMUTE</span>
+            </button>
+
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-xs">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[var(--color-text-secondary)]">API Live</span>
@@ -240,6 +254,19 @@ export const AppShell: React.FC = () => {
         <main className={`flex-1 flex flex-col min-h-0 w-full ${isFullBleed ? 'overflow-hidden' : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto'}`}>
           <Outlet />
         </main>
+
+        {/* Floating Quick Ask Assistant Trigger (available everywhere except /ask) */}
+        {!location.pathname.startsWith('/ask') && (
+          <button
+            onClick={() => navigate('/ask')}
+            className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-xl shadow-violet-600/30 hover:scale-105 active:scale-95 transition-all cursor-pointer font-medium text-xs group"
+            title="Ask UNMUTE AI Assistant"
+          >
+            <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+            <span className="font-semibold">Ask UNMUTE</span>
+            <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono">RAG</span>
+          </button>
+        )}
       </div>
     </div>
   );

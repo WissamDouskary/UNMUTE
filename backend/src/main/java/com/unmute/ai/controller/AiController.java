@@ -12,6 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import com.unmute.ai.dto.AskRequest;
+import com.unmute.ai.dto.AskResponse;
+import com.unmute.ai.service.RagService;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AiController {
 
     private final AiService aiService;
+    private final RagService ragService;
 
-    public AiController(AiService aiService) {
+    public AiController(AiService aiService, RagService ragService) {
         this.aiService = aiService;
+        this.ragService = ragService;
     }
 
     private UserPrincipal requirePrincipal(UserPrincipal principal) {
@@ -49,6 +54,16 @@ public class AiController {
     ) {
         requirePrincipal(principal);
         ExtractTasksResponse response = aiService.extractTasks(principal.getId(), request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/ask")
+    public ResponseEntity<AskResponse> ask(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody AskRequest request
+    ) {
+        requirePrincipal(principal);
+        AskResponse response = ragService.ask(principal.getId(), request.question(), request.resolvedTopK());
         return ResponseEntity.ok(response);
     }
 }

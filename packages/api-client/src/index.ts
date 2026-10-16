@@ -25,6 +25,14 @@ export type {
   ExtractedTaskItem,
   ExtractTasksRequest,
   ExtractTasksResponse,
+  SourceStatus,
+  Source,
+  SemanticSearchResult,
+  SemanticSearchRequest,
+  Citation,
+  AskRequest,
+  AskResponse,
 } from './types';
+
 
 export default apiClient;

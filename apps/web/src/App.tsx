@@ -8,6 +8,8 @@ import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { NotesPage } from './pages/NotesPage';
 import { TasksPage } from './pages/TasksPage';
+import { SourcesPage } from './pages/SourcesPage';
+import { AskUnmutePage } from './pages/AskUnmutePage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
 function App() {
@@ -27,6 +29,7 @@ function App() {
               <Route index element={<DashboardPage />} />
               <Route path="notes" element={<NotesPage />} />
               <Route path="tasks" element={<TasksPage />} />
+              <Route path="ask" element={<AskUnmutePage />} />
               <Route
                 path="projects"
                 element={
@@ -37,16 +40,7 @@ function App() {
                   />
                 }
               />
-              <Route
-                path="sources"
-                element={
-                  <PlaceholderPage
-                    title="Audio & Knowledge Sources"
-                    description="Synchronize audio memos, transcripts, and external inputs."
-                    phase="Phase 4"
-                  />
-                }
-              />
+              <Route path="sources" element={<SourcesPage />} />
               <Route
                 path="settings"
                 element={

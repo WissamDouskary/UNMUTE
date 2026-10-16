@@ -23,6 +23,11 @@ import type {
   SummarizeResponse,
   ExtractTasksRequest,
   ExtractTasksResponse,
+  Source,
+  SemanticSearchResult,
+  SemanticSearchRequest,
+  AskRequest,
+  AskResponse,
 } from './types';
 
 // Ambient declaration for process in environments without @types/node
@@ -314,6 +319,78 @@ export class ApiClient {
 
   extractTasksFromContent(data: ExtractTasksRequest): Promise<ExtractTasksResponse> {
     return this.post<ExtractTasksResponse>('/api/v1/ai/extract-tasks', data);
+  }
+
+  // --- Sources & Audio Capture Endpoints ---
+
+  async uploadSource(file: File | Blob, filename?: string): Promise<Source> {
+    const url = this.buildUrl('/api/v1/sources');
+    const token = this.getAccessToken();
+
+    const formData = new FormData();
+    if (file instanceof File) {
+      formData.append('file', file);
+    } else {
+      formData.append('file', file, filename || 'recording.webm');
+    }
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorBody: ApiError;
+      try {
+        errorBody = (await response.json()) as ApiError;
+      } catch {
+        errorBody = { status: response.status, message: response.statusText || `HTTP ${response.status}` };
+      }
+      if (response.status === 401 && this.onUnauthorized) {
+        this.onUnauthorized();
+      }
+      throw errorBody;
+    }
+
+    return response.json() as Promise<Source>;
+  }
+
+  getSources(): Promise<Source[]> {
+    return this.get<Source[]>('/api/v1/sources');
+  }
+
+  getSource(id: string): Promise<Source> {
+    return this.get<Source>(`/api/v1/sources/${id}`);
+  }
+
+  deleteSource(id: string): Promise<void> {
+    return this.delete<void>(`/api/v1/sources/${id}`);
+  }
+
+  retrySource(id: string): Promise<Source> {
+    return this.post<Source>(`/api/v1/sources/${id}/retry`);
+  }
+
+  // --- Semantic Search & Ask UNMUTE (RAG) Endpoints ---
+
+  semanticSearch(queryOrRequest: string | SemanticSearchRequest, limit: number = 10): Promise<SemanticSearchResult[]> {
+    const query = typeof queryOrRequest === 'string' ? queryOrRequest : queryOrRequest.query;
+    const resolvedLimit = typeof queryOrRequest === 'object' && queryOrRequest.limit !== undefined ? queryOrRequest.limit : limit;
+    const encoded = encodeURIComponent(query);
+    return this.get<SemanticSearchResult[]>(`/api/v1/search/semantic?q=${encoded}&limit=${resolvedLimit}`);
+  }
+
+  askAi(questionOrRequest: string | AskRequest, topK?: number): Promise<AskResponse> {
+    const payload: AskRequest = typeof questionOrRequest === 'string'
+      ? { question: questionOrRequest, topK: topK ?? 5 }
+      : questionOrRequest;
+    return this.post<AskResponse>('/api/v1/ai/ask', payload);
   }
 }
 

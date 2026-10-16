@@ -153,3 +153,56 @@ export interface ExtractTasksResponse {
   tasks: ExtractedTaskItem[];
   count: number;
 }
+
+export type SourceStatus = 'PENDING' | 'TRANSCRIBING' | 'COMPLETED' | 'FAILED';
+
+export interface Source {
+  id: string;
+  filename: string;
+  originalName: string;
+  fileType: string;
+  fileSize: number;
+  status: SourceStatus;
+  transcript?: string | null;
+  durationSeconds?: number | null;
+  errorMessage?: string | null;
+  noteId?: string | null;
+  noteTitle?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// --- Semantic Search & Ask UNMUTE (RAG) ---
+
+export interface SemanticSearchResult {
+  noteId: string;
+  title: string;
+  content: string | null;
+  summary: string | null;
+  similarity: number;
+  tags: string[];
+  updatedAt: string;
+}
+
+export interface SemanticSearchRequest {
+  query: string;
+  limit?: number;
+}
+
+export interface Citation {
+  noteId: string;
+  title: string;
+  snippet: string;
+  similarity: number;
+}
+
+export interface AskRequest {
+  question: string;
+  topK?: number;
+}
+
+export interface AskResponse {
+  answer: string;
+  citations: Citation[];
+}
+
