@@ -396,6 +396,7 @@ export const SourcesPage: React.FC = () => {
                   <button
                     onClick={isRecording ? stopRecording : startRecording}
                     disabled={isUploading}
+                    aria-label={isRecording ? 'Stop recording' : 'Start recording'}
                     className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl cursor-pointer ${
                       isRecording
                         ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/40 scale-105'
@@ -538,6 +539,7 @@ export const SourcesPage: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setUploadError(null)}
+                  aria-label="Dismiss error"
                   className="p-1 hover:bg-rose-500/20 rounded cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -602,6 +604,7 @@ export const SourcesPage: React.FC = () => {
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -827,6 +830,7 @@ export const SourcesPage: React.FC = () => {
 
               <button
                 onClick={() => setSelectedSource(null)}
+                aria-label="Close details"
                 className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />

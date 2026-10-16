@@ -414,8 +414,8 @@ export const KnowledgeGraphPage: React.FC = () => {
       )}
 
       {/* Top toolbar */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-3 p-4">
-        <div className="pointer-events-auto flex flex-col gap-2">
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-3 p-3 sm:p-4">
+        <div className="pointer-events-auto flex w-full flex-col gap-2 sm:w-auto">
           <div className="flex items-center gap-2">
             <Waypoints className="h-4 w-4 text-violet-400" />
             <h1 className="text-sm font-semibold tracking-tight text-zinc-100">Knowledge Graph</h1>
@@ -423,7 +423,7 @@ export const KnowledgeGraphPage: React.FC = () => {
               {totalNodes} nodes · {graphData.links.length} links
             </span>
           </div>
-          <div className="flex h-8 w-72 items-center gap-2 rounded-md border border-zinc-800/50 bg-zinc-900/80 px-2.5 backdrop-blur-md focus-within:border-zinc-700">
+          <div className="flex h-8 w-full sm:w-72 items-center gap-2 rounded-md border border-zinc-800/50 bg-zinc-900/80 px-2.5 backdrop-blur-md focus-within:border-zinc-700">
             <Search className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
             <input
               ref={searchRef}
@@ -457,7 +457,7 @@ export const KnowledgeGraphPage: React.FC = () => {
           )}
         </div>
 
-        <div className="pointer-events-auto flex items-center gap-1.5 rounded-md border border-zinc-800/50 bg-zinc-900/80 p-1 backdrop-blur-md">
+        <div className="pointer-events-auto flex max-w-full items-center gap-1.5 overflow-x-auto rounded-md border border-zinc-800/50 bg-zinc-900/80 p-1 backdrop-blur-md [scrollbar-width:none]">
           {NODE_TYPES.map((type) => {
             const meta = TYPE_META[type];
             const active = visibleTypes.has(type);

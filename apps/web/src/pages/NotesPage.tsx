@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -18,6 +18,7 @@ import {
   Sparkles,
   ChevronRight,
   ChevronDown,
+  ChevronLeft,
   CheckSquare,
   ArrowUpRight,
   AlertCircle,
@@ -40,6 +41,9 @@ export function NotesPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  // Below md only one column fits; desktop always shows both.
+  const [mobilePane, setMobilePane] = useState<'list' | 'editor'>(urlNoteId ? 'editor' : 'list');
+  const titleInputRef = useRef<HTMLTextAreaElement>(null);
 
   // --- Active Note Form State ---
   const [title, setTitle] = useState<string>('');
@@ -199,6 +203,19 @@ export function NotesPage() {
       null
     );
   }, [notes, selectedNoteId, directNote]);
+
+  const hasActiveNote = !!activeNote;
+  useLayoutEffect(() => {
+    const el = titleInputRef.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [title, hasActiveNote, mobilePane]);
 
   const activeNoteRef = useRef<Note | null>(activeNote);
   activeNoteRef.current = activeNote;
@@ -424,6 +441,7 @@ export function NotesPage() {
       queryClient.invalidateQueries({ queryKey: ['tags'] });
 
       setSelectedNoteId(newNote.id);
+      setMobilePane('editor');
       if (urlNoteId) {
         setSearchParams({ noteId: newNote.id }, { replace: true });
       }
@@ -1122,7 +1140,8 @@ export function NotesPage() {
       .replace(/<[^>]*>/g, ' ')
       .replace(/[#*`~>-]/g, ' ')
       .replace(/\s+/g, ' ')
-      .trim();
+      .trim()
+      .replace(/^\S*\s*Voice Recording Transcript Source: .*? Duration: \d+:\d{2}\s*/i, '');
     return clean ? clean.slice(0, 90) : 'Empty note';
   };
 
@@ -1131,7 +1150,9 @@ export function NotesPage() {
       {/* =========================================================================
           MASTER COLUMN: Notes List, Filters & Search (w-80 or w-96 with border-r)
       ========================================================================== */}
-      <div className="w-80 md:w-88 lg:w-96 border-r border-zinc-800/80 flex flex-col flex-shrink-0 bg-zinc-950 relative">
+      <div
+        className={`${mobilePane === 'editor' ? 'hidden md:flex' : 'flex'} w-full md:w-88 lg:w-96 md:border-r border-zinc-800/80 flex-col flex-shrink-0 bg-zinc-950 relative`}
+      >
         {/* Header with New Note Button & Multi-Select Toggle */}
         <div className="p-4 border-b border-zinc-800/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -1297,6 +1318,7 @@ export function NotesPage() {
                       toggleNoteSelection(note.id);
                     } else {
                       setSelectedNoteId(note.id);
+                      setMobilePane('editor');
                       if (urlNoteId && urlNoteId !== note.id) {
                         setSearchParams({ noteId: note.id }, { replace: true });
                       }
@@ -1505,16 +1527,25 @@ export function NotesPage() {
       {/* =========================================================================
           DETAIL COLUMN: Editor Canvas (flex-1 bg-zinc-950 full horizontal space)
       ========================================================================== */}
-      <div className="flex-1 flex flex-col h-full min-w-0 bg-zinc-950 overflow-hidden">
+      <div
+        className={`${mobilePane === 'list' ? 'hidden md:flex' : 'flex'} flex-1 flex-col h-full min-w-0 bg-zinc-950 overflow-hidden`}
+      >
         {activeNote ? (
           <>
             {/* Top Editor Action Bar */}
-            <div className="h-14 px-8 border-b border-zinc-800/80 flex items-center justify-between gap-4 bg-zinc-950/80 backdrop-blur-md flex-shrink-0">
+            <div className="h-14 px-3 sm:px-8 border-b border-zinc-800/80 flex items-center justify-between gap-2 sm:gap-4 bg-zinc-950/80 backdrop-blur-md flex-shrink-0">
               {/* Save Status & Breadcrumb */}
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-violet-400" />
-                  <span className="truncate max-w-[200px] sm:max-w-[320px] text-zinc-200">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <button
+                  onClick={() => setMobilePane('list')}
+                  aria-label="Back to notes"
+                  className="md:hidden -ml-1 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="hidden sm:flex text-xs font-semibold text-zinc-400 items-center gap-1.5 min-w-0">
+                  <FileText className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+                  <span className="truncate max-w-[200px] lg:max-w-[320px] text-zinc-200">
                     {title || 'Untitled Note'}
                   </span>
                   <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
@@ -1549,7 +1580,7 @@ export function NotesPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 {/* Linked Tasks Pill */}
                 <button
                   onClick={() => setShowLinkedTasksDrawer(true)}
@@ -1558,7 +1589,8 @@ export function NotesPage() {
                 >
                   <CheckSquare className="w-3.5 h-3.5 text-violet-400" />
                   <span>
-                    {linkedTasks.length} {linkedTasks.length === 1 ? 'task' : 'tasks'}
+                    {linkedTasks.length}
+                    <span className="hidden sm:inline"> {linkedTasks.length === 1 ? 'task' : 'tasks'}</span>
                   </span>
                 </button>
 
@@ -1567,6 +1599,7 @@ export function NotesPage() {
                   <button
                     onClick={() => setShowAiMenu(!showAiMenu)}
                     disabled={isAiLoading}
+                    aria-label="AI Assistant"
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-violet-600/20 to-indigo-600/20 hover:from-violet-600/30 hover:to-indigo-600/30 border border-violet-500/40 text-violet-300 hover:text-white text-xs font-semibold shadow-sm transition-all cursor-pointer disabled:opacity-50"
                   >
                     {isAiLoading ? (
@@ -1574,7 +1607,7 @@ export function NotesPage() {
                     ) : (
                       <Sparkles className="w-3.5 h-3.5 text-violet-400" />
                     )}
-                    <span>AI Assistant</span>
+                    <span className="hidden sm:inline">AI Assistant</span>
                     <ChevronDown className="w-3 h-3 text-violet-400" />
                   </button>
 
@@ -1610,12 +1643,13 @@ export function NotesPage() {
                   )}
                 </div>
 
-                <div className="h-4 w-px bg-zinc-800 mx-0.5" />
+                <div className="hidden sm:block h-4 w-px bg-zinc-800 mx-0.5" />
 
                 {/* Pin Button */}
                 <button
                   onClick={() => handleTogglePin()}
                   title={isPinned ? 'Unpin' : 'Pin note'}
+                  aria-label={isPinned ? 'Unpin' : 'Pin note'}
                   className={`p-2 rounded-lg border transition-colors cursor-pointer ${
                     isPinned
                       ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
@@ -1629,6 +1663,7 @@ export function NotesPage() {
                 <button
                   onClick={() => handleToggleArchive()}
                   title={isArchived ? 'Restore from Archive' : 'Archive note'}
+                  aria-label={isArchived ? 'Restore from Archive' : 'Archive note'}
                   className={`p-2 rounded-lg border transition-colors cursor-pointer ${
                     isArchived
                       ? 'bg-violet-500/10 border-violet-500/30 text-violet-400'
@@ -1642,6 +1677,7 @@ export function NotesPage() {
                 <button
                   onClick={() => setDeleteConfirmId(activeNote.id)}
                   title="Delete note"
+                  aria-label="Delete note"
                   className="p-2 rounded-lg border border-zinc-800 hover:bg-red-500/10 hover:border-red-500/30 text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -1650,15 +1686,20 @@ export function NotesPage() {
             </div>
 
             {/* Reading Constraint (The 65-Character Rule): Centered max-w-3xl editor canvas */}
-            <div className="flex-1 overflow-y-auto px-8 sm:px-12 py-12 lg:py-16">
+            <div className="flex-1 overflow-y-auto px-5 sm:px-12 py-8 sm:py-12 lg:py-16">
               <div className="max-w-3xl mx-auto w-full flex flex-col min-h-full">
-                {/* Note Title Input */}
-                <input
-                  type="text"
+                {/* Note Title (textarea so long titles wrap instead of scrolling sideways) */}
+                <textarea
+                  ref={titleInputRef}
+                  rows={1}
                   placeholder="Untitled Note"
+                  aria-label="Note title"
                   value={title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  className="w-full text-4xl sm:text-5xl font-extrabold text-white placeholder:text-zinc-700 tracking-tight leading-tight focus:outline-none mb-4 w-full bg-transparent border-none selection:bg-violet-600/30"
+                  onChange={(e) => handleTitleChange(e.target.value.replace(/\n/g, ' '))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.preventDefault();
+                  }}
+                  className="w-full resize-none overflow-hidden text-3xl sm:text-5xl font-extrabold text-white placeholder:text-zinc-700 tracking-tight leading-tight focus:outline-none mb-4 bg-transparent border-none selection:bg-violet-600/30"
                 />
 
                 {/* Tags & Metadata Bar */}
@@ -1673,6 +1714,7 @@ export function NotesPage() {
                         #{tag}
                         <button
                           onClick={() => handleRemoveTag(tag)}
+                          aria-label={`Remove tag ${tag}`}
                           className="hover:text-red-400 transition-colors cursor-pointer"
                         >
                           <X className="w-3 h-3" />
@@ -1749,7 +1791,14 @@ export function NotesPage() {
           </>
         ) : (
           /* Empty Workspace State */
-          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+          <div className="relative flex-1 flex flex-col items-center justify-center p-6 sm:p-12 text-center">
+            <button
+              onClick={() => setMobilePane('list')}
+              aria-label="Back to notes"
+              className="md:hidden absolute top-3 left-3 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
             <div className="w-16 h-16 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-center mb-4 shadow-xl shadow-purple-950/20">
               <Sparkles className="w-8 h-8 text-violet-400" />
             </div>
@@ -1771,13 +1820,14 @@ export function NotesPage() {
 
       {/* Floating AI Notification Toast */}
       {aiNotification && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-zinc-900 border border-violet-500/40 shadow-2xl text-xs text-zinc-100 animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-20 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-zinc-900 border border-violet-500/40 shadow-2xl text-xs text-zinc-100 animate-in fade-in slide-in-from-bottom-3 duration-200">
           {aiNotification.type === 'success' && <Sparkles className="w-4 h-4 text-violet-400 flex-shrink-0" />}
           {aiNotification.type === 'error' && <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />}
           {aiNotification.type === 'info' && <CheckSquare className="w-4 h-4 text-blue-400 flex-shrink-0" />}
           <span className="font-medium">{aiNotification.message}</span>
           <button
             onClick={() => setAiNotification(null)}
+            aria-label="Dismiss notification"
             className="text-zinc-500 hover:text-zinc-300 ml-2 cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
@@ -1800,6 +1850,7 @@ export function NotesPage() {
               </div>
               <button
                 onClick={() => setShowLinkedTasksDrawer(false)}
+                aria-label="Close linked tasks"
                 className="p-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 cursor-pointer"
               >
                 <X className="w-4 h-4" />

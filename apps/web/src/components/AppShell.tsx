@@ -73,7 +73,11 @@ export const AppShell: React.FC = () => {
     : (user?.email?.[0] || 'U').toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[var(--color-surface-primary)] text-[var(--color-text-primary)] flex flex-col md:flex-row">
+    <div
+      className={`bg-[var(--color-surface-primary)] text-[var(--color-text-primary)] flex flex-col md:flex-row ${
+        isFullBleed ? 'h-dvh overflow-hidden' : 'min-h-dvh'
+      }`}
+    >
       {/* Mobile Top Header */}
       <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[var(--color-surface-secondary)] border-b border-[var(--color-border)] sticky top-0 z-50">
         <div className="flex items-center gap-2.5">
@@ -107,7 +111,7 @@ export const AppShell: React.FC = () => {
 
       {/* Sidebar for Desktop & Mobile Drawer */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[var(--color-surface-secondary)] border-r border-[var(--color-border)] flex flex-col justify-between transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:h-screen md:sticky md:top-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[var(--color-surface-secondary)] border-r border-[var(--color-border)] flex flex-col justify-between transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:h-dvh md:sticky md:top-0 ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -221,7 +225,7 @@ export const AppShell: React.FC = () => {
       )}
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-w-0 ${isFullBleed ? 'h-screen overflow-hidden' : 'overflow-y-auto'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 ${isFullBleed ? 'min-h-0 overflow-hidden' : 'overflow-y-auto'}`}>
         {/* Top Header Bar */}
         <header className="hidden md:flex items-center justify-between h-16 px-8 border-b border-[var(--color-border)] bg-[var(--color-surface-primary)] sticky top-0 z-20 backdrop-blur-md bg-opacity-80 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -263,12 +267,13 @@ export const AppShell: React.FC = () => {
         {!location.pathname.startsWith('/ask') && (
           <button
             onClick={() => navigate('/ask')}
-            className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-xl shadow-violet-600/30 hover:scale-105 active:scale-95 transition-all cursor-pointer font-medium text-xs group"
+            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex items-center gap-2.5 p-3 sm:px-4 sm:py-2.5 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-xl shadow-violet-600/30 hover:scale-105 active:scale-95 transition-all cursor-pointer font-medium text-xs group"
             title="Ask UNMUTE AI Assistant"
+            aria-label="Ask UNMUTE AI Assistant"
           >
             <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-            <span className="font-semibold">Ask UNMUTE</span>
-            <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono">RAG</span>
+            <span className="hidden sm:inline font-semibold">Ask UNMUTE</span>
+            <span className="hidden sm:inline text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono">RAG</span>
           </button>
         )}
       </div>
