@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -43,6 +43,7 @@ const PRIORITY_OPTIONS: SelectOption<TaskPriority | 'ALL'>[] = [
 
 export function TasksPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
   // Filter & Search State
@@ -71,6 +72,17 @@ export function TasksPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isQuickAddOpen]);
+
+  useEffect(() => {
+    const token = searchParams.get('compose') === '1' ? searchParams.get('t') : null;
+    if (!token || sessionStorage.getItem('unmute-task') === token) return;
+    sessionStorage.setItem('unmute-task', token);
+    setIsQuickAddOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('compose');
+    next.delete('t');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Fetch Tasks Query
   const tasksQueryKey = [

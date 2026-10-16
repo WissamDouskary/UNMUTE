@@ -1,302 +1,230 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowUpRight, CheckSquare, FileText, Loader2 } from 'lucide-react';
 import { apiClient } from '@unmute/api-client';
-import type { User } from '@unmute/api-client';
-import {
-  ShieldCheck,
-  Key,
-  Database,
-  Server,
-  RefreshCw,
-  CheckCircle2,
-  Clock,
-  Sparkles,
-  ArrowRight,
-  Code2,
-} from 'lucide-react';
+import type { Note, Task } from '@unmute/api-client';
+import { useAuth } from '../context/AuthContext';
+import { OPEN_PALETTE_EVENT } from '../components/CommandPalette';
+
+function parseDue(value: string): Date {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (dateOnly) {
+    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+  }
+  return new Date(value);
+}
+
+function sameLocalDay(iso: string, day = new Date()): boolean {
+  const date = parseDue(iso);
+  return (
+    date.getFullYear() === day.getFullYear() &&
+    date.getMonth() === day.getMonth() &&
+    date.getDate() === day.getDate()
+  );
+}
+
+function isOverdue(iso: string): boolean {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return parseDue(iso) < start;
+}
+
+function relativeTime(iso?: string): string {
+  if (!iso) return '';
+  const diffMin = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const hours = Math.floor(diffMin / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
 
 export const DashboardPage: React.FC = () => {
-  const { user, accessToken, refreshUser } = useAuth();
+  const { user } = useAuth();
+  const name = user?.displayName || user?.email?.split('@')[0] || 'there';
 
-  const [testResult, setTestResult] = useState<User | null>(null);
-  const [testLatency, setTestLatency] = useState<number | null>(null);
-  const [isTesting, setIsTesting] = useState(false);
-  const [testError, setTestError] = useState<string | null>(null);
+  const notesQuery = useQuery({
+    queryKey: ['notes', 'home'],
+    queryFn: () => apiClient.getNotes({ archived: false, size: 8 }),
+  });
+  const tasksQuery = useQuery({
+    queryKey: ['tasks', 'home'],
+    queryFn: () => apiClient.getTasks({}),
+  });
+  const sourcesQuery = useQuery({
+    queryKey: ['sources'],
+    queryFn: () => apiClient.getSources(),
+  });
 
-  const handleTestMe = async () => {
-    setIsTesting(true);
-    setTestError(null);
-    const start = performance.now();
-    try {
-      const data = await apiClient.getMe();
-      const end = performance.now();
-      setTestResult(data);
-      setTestLatency(Math.round(end - start));
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      setTestError(e?.message || 'Failed to call /api/v1/users/me');
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  const handleManualRefresh = async () => {
-    setIsTesting(true);
-    try {
-      await refreshUser();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsTesting(false);
-    }
-  };
+  const notes = notesQuery.data?.content ?? [];
+  const tasks = tasksQuery.data ?? [];
+  const openTasks = tasks.filter((task) => !task.isCompleted);
+  const dueToday = openTasks.filter((task) => task.dueDate && sameLocalDay(task.dueDate));
+  const overdue = openTasks.filter((task) => task.dueDate && isOverdue(task.dueDate) && !sameLocalDay(task.dueDate));
+  const attention = [...overdue, ...dueToday];
+  const recent = [...notes].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')).slice(0, 6);
+  const loading = notesQuery.isLoading || tasksQuery.isLoading;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Welcome Hero */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[var(--color-surface-secondary)] to-[var(--color-surface-tertiary)] border border-[var(--color-border)] p-6 sm:p-8">
-        <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent-hover)] text-xs font-semibold mb-4">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Phase 1: Auth & Foundation Active</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--color-text-primary)] tracking-tight">
-            Welcome back, {user?.displayName || user?.email?.split('@')[0]}
-          </h1>
-          <p className="mt-2 text-sm sm:text-base text-[var(--color-text-secondary)] leading-relaxed">
-            Your UNMUTE workspace is live. All interactions are secured with in-memory Bearer token rotation
-            and backed by PostgreSQL persistence.
-          </p>
+    <div className="w-full max-w-[90rem] mx-auto px-1 sm:px-2 py-2 space-y-8">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Home</h1>
+          <p className="mt-1 text-sm text-zinc-500">{name}</p>
         </div>
-
-        {/* Decorative corner glow */}
-        <div className="absolute right-0 top-0 -mt-12 -mr-12 w-64 h-64 bg-[var(--color-accent)] opacity-10 rounded-full blur-3xl pointer-events-none" />
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900/60 text-xs text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 cursor-pointer"
+        >
+          <span>Search</span>
+          <kbd className="font-mono text-[10px] text-zinc-500">Ctrl K</kbd>
+        </button>
       </div>
 
-      {/* Security Architecture & Session Inspector Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Card 1: Token Security Model */}
-        <div className="rounded-2xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                Access Token State
-              </span>
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-            </div>
-            <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
-              In-Memory Storage
-            </h3>
-            <p className="mt-1 text-xs text-[var(--color-text-secondary)] leading-relaxed">
-              JWT access token is strictly isolated in React memory. It cannot be extracted by malicious XSS scripts via browser storage APIs.
-            </p>
-          </div>
-          <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex items-center justify-between text-xs">
-            <span className="text-[var(--color-text-muted)]">Bearer Status:</span>
-            <span className="font-mono text-emerald-400 font-medium">
-              {accessToken ? 'Active (Loaded)' : 'Inactive'}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 2: Refresh Token Rotation */}
-        <div className="rounded-2xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                Refresh Strategy
-              </span>
-              <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
-                <Key className="w-5 h-5" />
-              </div>
-            </div>
-            <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
-              Single-Use Rotation
-            </h3>
-            <p className="mt-1 text-xs text-[var(--color-text-secondary)] leading-relaxed">
-              Stored in localStorage to restore sessions across reloads. Tokens are SHA-256 hashed in PostgreSQL; reusing a revoked token triggers instant revocation.
-            </p>
-          </div>
-          <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex items-center justify-between text-xs">
-            <span className="text-[var(--color-text-muted)]">Session Recovery:</span>
-            <span className="font-mono text-purple-400 font-medium">Enabled</span>
-          </div>
-        </div>
-
-        {/* Card 3: Backend & Database Connection */}
-        <div className="rounded-2xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                Database & API
-              </span>
-              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
-                <Database className="w-5 h-5" />
-              </div>
-            </div>
-            <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
-              PostgreSQL 16
-            </h3>
-            <p className="mt-1 text-xs text-[var(--color-text-secondary)] leading-relaxed">
-              Persisted with Docker named volume <code className="text-xs text-[var(--color-accent-hover)] font-mono">unmute-pgdata</code>, managed via Flyway V1 & V2 migrations.
-            </p>
-          </div>
-          <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex items-center justify-between text-xs">
-            <span className="text-[var(--color-text-muted)]">Engine:</span>
-            <span className="font-mono text-blue-400 font-medium">Spring Boot 3.4.4</span>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Stat label="Notes" value={notesQuery.data?.totalElements} href="/notes" loading={notesQuery.isLoading} />
+        <Stat label="Open tasks" value={tasksQuery.isLoading ? undefined : openTasks.length} href="/tasks" loading={tasksQuery.isLoading} />
+        <Stat label="Due today" value={tasksQuery.isLoading ? undefined : dueToday.length} href="/tasks" loading={tasksQuery.isLoading} />
+        <Stat label="Sources" value={sourcesQuery.data?.length} href="/sources" loading={sourcesQuery.isLoading} />
       </div>
 
-      {/* Live Interactive Endpoint Verification */}
-      <div className="rounded-2xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-2">
-              <Server className="w-4 h-4 text-[var(--color-accent)]" />
-              <h2 className="text-base font-bold text-[var(--color-text-primary)]">
-                Live Backend API Inspector
-              </h2>
-            </div>
-            <p className="text-xs text-[var(--color-text-secondary)] mt-1">
-              Verify authenticated communication directly between React Web and the Spring Boot backend.
-            </p>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <section>
+          <SectionTitle icon={FileText} label="Recent notes" href="/notes" />
+          {loading ? (
+            <Loading />
+          ) : recent.length === 0 ? (
+            <Empty text="No notes yet." action="New note" href="/notes?compose=1" />
+          ) : (
+            <ul className="divide-y divide-zinc-800/80">
+              {recent.map((note) => (
+                <NoteRow key={note.id} note={note} />
+              ))}
+            </ul>
+          )}
+        </section>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleManualRefresh}
-              disabled={isTesting}
-              className="px-3 py-2 rounded-xl text-xs font-medium bg-[var(--color-surface-tertiary)] hover:bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-white transition-colors flex items-center gap-2 cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isTesting ? 'animate-spin' : ''}`} />
-              <span>Sync Profile</span>
-            </button>
-
-            <button
-              onClick={handleTestMe}
-              disabled={isTesting}
-              className="px-4 py-2 rounded-xl text-xs font-medium bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white shadow-md shadow-[var(--color-accent-muted)] transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <Code2 className="w-3.5 h-3.5" />
-              <span>Test GET /api/v1/users/me</span>
-            </button>
-          </div>
-        </div>
-
-        {testError && (
-          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-300">
-            {testError}
-          </div>
-        )}
-
-        {testResult ? (
-          <div className="rounded-xl bg-[var(--color-surface-primary)] border border-[var(--color-border)] p-4">
-            <div className="flex items-center justify-between mb-3 text-xs">
-              <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                <CheckCircle2 className="w-4 h-4" />
-                HTTP 200 OK — Authenticated via In-Memory Bearer Token
-              </span>
-              {testLatency !== null && (
-                <span className="flex items-center gap-1 text-[var(--color-text-muted)] font-mono">
-                  <Clock className="w-3.5 h-3.5" />
-                  {testLatency}ms
-                </span>
-              )}
-            </div>
-            <pre className="text-xs font-mono text-[var(--color-text-primary)] overflow-x-auto p-3 rounded-lg bg-[var(--color-surface-secondary)] border border-[var(--color-border)]">
-              {JSON.stringify(testResult, null, 2)}
-            </pre>
-          </div>
-        ) : (
-          <div className="text-center py-6 text-xs text-[var(--color-text-muted)] border border-dashed border-[var(--color-border)] rounded-xl">
-            Click &quot;Test GET /api/v1/users/me&quot; above to perform an authenticated request with the current session.
-          </div>
-        )}
-      </div>
-
-      {/* Product Roadmap Overview */}
-      <div className="space-y-4">
-        <h2 className="text-base font-bold text-[var(--color-text-primary)]">
-          System Roadmap & Next Phases
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="p-5 rounded-2xl bg-[var(--color-surface-secondary)] border border-emerald-500/30 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                  Phase 1.1 - 1.3
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-semibold">
-                  Complete
-                </span>
-              </div>
-              <h3 className="font-semibold text-sm text-[var(--color-text-primary)]">
-                Auth & Database Foundation
-              </h3>
-              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                Dockerized Spring Boot, PostgreSQL, JWT rotation, in-memory client state, Login/Register pages.
-              </p>
-            </div>
-            <div className="mt-4 flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Verified & Live</span>
-            </div>
-          </div>
-
-          <Link
-            to="/notes"
-            className="p-5 rounded-2xl bg-[var(--color-surface-secondary)] border border-[var(--color-accent-muted)] hover:border-[var(--color-accent)] transition-all hover:scale-[1.01] flex flex-col justify-between group cursor-pointer"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-accent-hover)]">
-                  Phase 2 Active
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent-hover)] text-[10px] font-semibold">
-                  Open Workspace
-                </span>
-              </div>
-              <h3 className="font-semibold text-sm text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-hover)] transition-colors">
-                Notes & Knowledge Ingestion
-              </h3>
-              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                Rich Markdown editor, split live preview, tag taxonomy, and user-scoped CRUD endpoints.
-              </p>
-            </div>
-            <div className="mt-4 flex items-center gap-1.5 text-xs text-[var(--color-accent-hover)] font-medium">
-              <span>Launch Notes Workspace</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </Link>
-
-          <div className="p-5 rounded-2xl bg-[var(--color-surface-secondary)] border border-[var(--color-border)] opacity-70 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                  Phase 3 & 4
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-[var(--color-surface-tertiary)] text-[var(--color-text-muted)] text-[10px] font-semibold">
-                  Planned
-                </span>
-              </div>
-              <h3 className="font-semibold text-sm text-[var(--color-text-primary)]">
-                Action Engine & Mobile Sync
-              </h3>
-              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                Task extraction, projects, reminders, and React Native iOS audio capture client.
-              </p>
-            </div>
-            <div className="mt-4 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] font-medium">
-              <span>Upcoming</span>
-            </div>
-          </div>
-        </div>
+        <section>
+          <SectionTitle icon={CheckSquare} label="Due" href="/tasks" />
+          {tasksQuery.isLoading ? (
+            <Loading />
+          ) : attention.length === 0 ? (
+            <Empty text="Nothing due today." action="New task" href="/tasks?compose=1" />
+          ) : (
+            <ul className="divide-y divide-zinc-800/80">
+              {attention.map((task) => (
+                <TaskRow key={task.id} task={task} overdue={overdue.some((item) => item.id === task.id)} />
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </div>
   );
 };
+
+function Stat({
+  label,
+  value,
+  href,
+  loading,
+}: {
+  label: string;
+  value: number | undefined;
+  href: string;
+  loading: boolean;
+}) {
+  return (
+    <Link
+      to={href}
+      className="flex items-center justify-between rounded-xl border border-zinc-800/80 bg-zinc-900/40 px-4 py-3 hover:border-zinc-700 transition-colors"
+    >
+      <span className="text-[11px] uppercase tracking-wider text-zinc-500">{label}</span>
+      <span className="text-lg font-semibold tabular-nums text-zinc-100">
+        {loading || value === undefined ? '—' : value}
+      </span>
+    </Link>
+  );
+}
+
+function SectionTitle({ icon: Icon, label, href }: { icon: React.ElementType; label: string; href: string }) {
+  return (
+    <div className="flex items-center justify-between mb-2">
+      <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+        <Icon className="w-3.5 h-3.5" />
+        {label}
+      </h2>
+      <Link to={href} className="text-[11px] text-zinc-500 hover:text-zinc-200 inline-flex items-center gap-1">
+        View all
+        <ArrowUpRight className="w-3 h-3" />
+      </Link>
+    </div>
+  );
+}
+
+function NoteRow({ note }: { note: Note }) {
+  return (
+    <li>
+      <Link
+        to={`/notes?noteId=${encodeURIComponent(note.id)}`}
+        className="flex items-center gap-3 py-2.5 hover:bg-zinc-900/50 -mx-2 px-2 rounded-lg"
+      >
+        <div className="min-w-0 flex-1">
+          <p dir="auto" className="text-sm text-zinc-200 truncate text-start">
+            {note.title || 'Untitled'}
+          </p>
+          {note.tags.length > 0 && (
+            <p className="text-[11px] text-zinc-500 truncate">
+              {note.tags.slice(0, 3).map((tag) => `#${tag}`).join('  ')}
+            </p>
+          )}
+        </div>
+        <span className="text-[11px] text-zinc-500 shrink-0">{relativeTime(note.updatedAt)}</span>
+      </Link>
+    </li>
+  );
+}
+
+function TaskRow({ task, overdue }: { task: Task; overdue: boolean }) {
+  return (
+    <li>
+      <Link
+        to={task.noteId ? `/notes?noteId=${encodeURIComponent(task.noteId)}` : '/tasks'}
+        className="flex items-center gap-3 py-2.5 hover:bg-zinc-900/50 -mx-2 px-2 rounded-lg"
+      >
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${overdue ? 'bg-red-400' : 'bg-amber-400'}`} />
+        <p dir="auto" className="min-w-0 flex-1 text-sm text-zinc-200 truncate text-start">
+          {task.title}
+        </p>
+        <span className={`text-[11px] shrink-0 ${overdue ? 'text-red-400' : 'text-zinc-500'}`}>
+          {overdue ? 'Overdue' : 'Today'}
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function Empty({ text, action, href }: { text: string; action: string; href: string }) {
+  return (
+    <div className="py-8 text-center">
+      <p className="text-sm text-zinc-500">{text}</p>
+      <Link to={href} className="inline-block mt-2 text-xs text-violet-300 hover:text-violet-200">
+        {action}
+      </Link>
+    </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="flex items-center gap-2 py-8 text-xs text-zinc-500">
+      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+      Loading
+    </div>
+  );
+}

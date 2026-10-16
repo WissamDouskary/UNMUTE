@@ -6,16 +6,15 @@ import {
   LayoutDashboard,
   FileText,
   CheckSquare,
-  FolderGit2,
   Radio,
-  Settings,
   LogOut,
-  ShieldCheck,
   Menu,
   X,
   Sparkles,
   Waypoints,
+  Search,
 } from 'lucide-react';
+import { CommandPalette, OPEN_PALETTE_EVENT } from './CommandPalette';
 
 export const AppShell: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -33,13 +32,11 @@ export const AppShell: React.FC = () => {
     location.pathname.startsWith('/graph');
   const getPageTitle = () => {
     if (location.pathname.startsWith('/graph')) return 'Knowledge Graph';
-    if (location.pathname.startsWith('/notes')) return 'Notes & Knowledge';
-    if (location.pathname.startsWith('/tasks')) return 'Tasks & Actions';
-    if (location.pathname.startsWith('/projects')) return 'Projects';
+    if (location.pathname.startsWith('/notes')) return 'Notes';
+    if (location.pathname.startsWith('/tasks')) return 'Tasks';
     if (location.pathname.startsWith('/sources')) return 'Sources';
-    if (location.pathname.startsWith('/ask')) return 'Ask UNMUTE (RAG)';
-    if (location.pathname.startsWith('/settings')) return 'Settings';
-    return 'Overview';
+    if (location.pathname.startsWith('/ask')) return 'Ask UNMUTE';
+    return 'Home';
   };
   const pageTitle = getPageTitle();
 
@@ -54,14 +51,12 @@ export const AppShell: React.FC = () => {
   };
 
   const navItems = [
-    { name: 'Dashboard', to: '/', icon: LayoutDashboard, exact: true },
-    { name: 'Ask UNMUTE', to: '/ask', icon: Sparkles, badge: 'Phase 5' },
-    { name: 'Notes', to: '/notes', icon: FileText, badge: 'Phase 2' },
-    { name: 'Tasks', to: '/tasks', icon: CheckSquare, badge: 'Phase 3' },
-    { name: 'Projects', to: '/projects', icon: FolderGit2, badge: 'Phase 3' },
-    { name: 'Sources', to: '/sources', icon: Radio, badge: 'Phase 4' },
-    { name: 'Graph', to: '/graph', icon: Waypoints, badge: 'Phase 6' },
-    { name: 'Settings', to: '/settings', icon: Settings },
+    { name: 'Home', to: '/', icon: LayoutDashboard, exact: true },
+    { name: 'Ask UNMUTE', to: '/ask', icon: Sparkles },
+    { name: 'Notes', to: '/notes', icon: FileText },
+    { name: 'Tasks', to: '/tasks', icon: CheckSquare },
+    { name: 'Sources', to: '/sources', icon: Radio },
+    { name: 'Graph', to: '/graph', icon: Waypoints },
   ];
 
   // User initials
@@ -166,26 +161,10 @@ export const AppShell: React.FC = () => {
                     <Icon className="w-4 h-4 shrink-0" />
                     <span>{item.name}</span>
                   </div>
-                  {item.badge && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)]">
-                      {item.badge}
-                    </span>
-                  )}
                 </NavLink>
               );
             })}
           </nav>
-
-          {/* Security Architecture Badge */}
-          <div className="mt-4 p-3 rounded-xl bg-[var(--color-surface-tertiary)] border border-[var(--color-border)]">
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
-              <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span>In-Memory Auth</span>
-            </div>
-            <p className="mt-1 text-[11px] text-[var(--color-text-muted)] leading-tight">
-              Access token isolated in memory against XSS exploits.
-            </p>
-          </div>
         </div>
 
         {/* User Profile & Logout Bottom Bar */}
@@ -242,6 +221,15 @@ export const AppShell: React.FC = () => {
 
           <div className="flex items-center gap-4">
             <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900/50 text-xs text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 cursor-pointer"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Search</span>
+              <kbd className="font-mono text-[10px] text-zinc-500">Ctrl K</kbd>
+            </button>
+            <button
               onClick={() => navigate('/ask')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-600/10 hover:bg-violet-600/20 border border-violet-500/30 text-xs font-medium text-violet-300 hover:text-white transition-all shadow-sm cursor-pointer"
               title="Launch Ask UNMUTE RAG Assistant"
@@ -280,6 +268,7 @@ export const AppShell: React.FC = () => {
         <main className={`flex-1 flex flex-col min-h-0 w-full ${isFullBleed ? 'overflow-hidden' : 'p-4 sm:p-6 lg:p-8 w-full'}`}>
           <Outlet />
         </main>
+        <CommandPalette />
 
         {/* Floating Quick Ask Assistant Trigger (available everywhere except /ask) */}
         {!location.pathname.startsWith('/ask') && (

@@ -11,7 +11,6 @@ import { TasksPage } from './pages/TasksPage';
 import { SourcesPage } from './pages/SourcesPage';
 import { AskUnmutePage } from './pages/AskUnmutePage';
 import { KnowledgeGraphPage } from './pages/KnowledgeGraphPage';
-import { PlaceholderPage } from './pages/PlaceholderPage';
 
 function App() {
   return (
@@ -32,27 +31,9 @@ function App() {
               <Route path="tasks" element={<TasksPage />} />
               <Route path="ask" element={<AskUnmutePage />} />
               <Route path="graph" element={<KnowledgeGraphPage />} />
-              <Route
-                path="projects"
-                element={
-                  <PlaceholderPage
-                    title="Projects & Milestones"
-                    description="Synthesize knowledge into structured project tracking."
-                    phase="Phase 3"
-                  />
-                }
-              />
               <Route path="sources" element={<SourcesPage />} />
-              <Route
-                path="settings"
-                element={
-                  <PlaceholderPage
-                    title="Account & Security Settings"
-                    description="Manage session keys, token revocation, and system preferences."
-                    phase="Settings"
-                  />
-                }
-              />
+              <Route path="projects" element={<Navigate to="/" replace />} />
+              <Route path="settings" element={<Navigate to="/" replace />} />
             </Route>
           </Route>
 

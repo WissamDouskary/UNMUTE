@@ -469,6 +469,19 @@ export function NotesPage() {
     });
   };
 
+  useEffect(() => {
+    const token = searchParams.get('compose') === '1' ? searchParams.get('t') : null;
+    if (!token || sessionStorage.getItem('unmute-compose') === token) return;
+    sessionStorage.setItem('unmute-compose', token);
+    handleCreateNote();
+    const next = new URLSearchParams(searchParams);
+    next.delete('compose');
+    next.delete('t');
+    setSearchParams(next, { replace: true });
+    // Create once per palette token; handleCreateNote closes over the latest filters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, setSearchParams]);
+
   // --- Toggle Pin Mutation ---
   const pinMutation = useMutation({
     mutationFn: (targetId: string) => apiClient.togglePinNote(targetId),
@@ -813,6 +826,31 @@ export function NotesPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isSelectionMode]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key !== 'j' && event.key !== 'k' && event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      if (document.querySelector('[aria-label="Command palette"]')) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (deleteConfirmId || batchDeleteConfirm || showLinkedTasksDrawer || showAiMenu || isSelectionMode) return;
+      if (notes.length === 0) return;
+      event.preventDefault();
+      const index = notes.findIndex((note) => note.id === selectedNoteIdRef.current);
+      const delta = event.key === 'j' || event.key === 'ArrowDown' ? 1 : -1;
+      const nextIndex = index < 0 ? 0 : Math.min(notes.length - 1, Math.max(0, index + delta));
+      const next = notes[nextIndex];
+      if (!next || next.id === selectedNoteIdRef.current) return;
+      setSelectedNoteId(next.id);
+      if (urlNoteId && urlNoteId !== next.id) {
+        setSearchParams({ noteId: next.id }, { replace: true });
+      }
+      document.querySelector(`[data-note-id="${next.id}"]`)?.scrollIntoView({ block: 'nearest' });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [notes, deleteConfirmId, batchDeleteConfirm, showLinkedTasksDrawer, showAiMenu, isSelectionMode, urlNoteId, setSearchParams]);
 
   useEffect(() => {
     setSelectedNoteIds(new Set());
@@ -1385,6 +1423,7 @@ export function NotesPage() {
               return (
                 <div
                   key={note.id}
+                  data-note-id={note.id}
                   onClick={() => {
                     if (isSelectionMode) {
                       toggleNoteSelection(note.id);

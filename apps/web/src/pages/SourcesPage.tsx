@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import {
   Radio,
@@ -26,6 +26,7 @@ import { apiClient, Source, SourceStatus } from '@unmute/api-client';
 
 export const SourcesPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
   // Search & Filter state
@@ -198,6 +199,17 @@ export const SourcesPage: React.FC = () => {
       setIsRecording(false);
     }
   };
+
+  useEffect(() => {
+    const token = searchParams.get('record') === '1' ? searchParams.get('t') : null;
+    if (!token || sessionStorage.getItem('unmute-record') === token) return;
+    sessionStorage.setItem('unmute-record', token);
+    void startRecording();
+    const next = new URLSearchParams(searchParams);
+    next.delete('record');
+    next.delete('t');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
