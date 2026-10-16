@@ -37,7 +37,7 @@ public class JobQueue {
 
     @Transactional
     public void enqueue(JobSpec spec) {
-        Instant now = Instant.now();
+        Instant now = JobClock.now();
         Instant runAt = now.plus(spec.delay());
         String payload = serialize(spec);
 

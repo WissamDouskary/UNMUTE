@@ -132,7 +132,7 @@ public class JobWorker {
     /** Due work enqueued by a committed transaction starts immediately instead of on the next poll tick. */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onJobsEnqueued(JobsEnqueuedEvent event) {
-        if (!event.runAt().isAfter(Instant.now().plus(properties.pollInterval()))) {
+        if (!event.runAt().isAfter(JobClock.now().plus(properties.pollInterval()))) {
             wakeUp();
         }
     }
@@ -210,7 +210,7 @@ public class JobWorker {
 
     List<ClaimedJob> claim(int limit) {
         List<ClaimedJob> claimed = tx.execute(status -> {
-            Instant now = Instant.now();
+            Instant now = JobClock.now();
             Set<String> claimedKeys = new HashSet<>();
             List<ClaimedJob> out = new ArrayList<>();
             for (BackgroundJob job : repository.lockDueJobs(now, Limit.of(limit))) {
@@ -243,7 +243,7 @@ public class JobWorker {
         long started = System.nanoTime();
         try {
             handler.handle(job);
-            Integer acked = tx.execute(s -> repository.markSucceeded(job.id(), job.lockToken(), Instant.now()));
+            Integer acked = tx.execute(s -> repository.markSucceeded(job.id(), job.lockToken(), JobClock.now()));
             if (acked == null || acked == 0) {
                 log.warn("Job {} {} finished after its lease was reclaimed; it may run again", job.type(), job.id());
             } else {
@@ -260,9 +260,9 @@ public class JobWorker {
             fail(job, handler, error);
             return;
         }
-        Instant nextRunAt = Instant.now().plus(backoff(job.attempt()));
+        Instant nextRunAt = JobClock.now().plus(backoff(job.attempt()));
         String message = describe(error);
-        tx.executeWithoutResult(s -> repository.scheduleRetry(job.id(), job.lockToken(), Instant.now(), nextRunAt, message));
+        tx.executeWithoutResult(s -> repository.scheduleRetry(job.id(), job.lockToken(), JobClock.now(), nextRunAt, message));
         log.warn("Job {} {} failed (attempt {}/{}), retrying at {}: {}",
                 job.type(), job.id(), job.attempt(), job.maxAttempts(), nextRunAt, message);
         safely(job, () -> handler.onRetryScheduled(job, error, nextRunAt));
@@ -270,7 +270,7 @@ public class JobWorker {
 
     private void fail(ClaimedJob job, JobHandler handler, Exception error) {
         String message = describe(error);
-        tx.executeWithoutResult(s -> repository.markFailed(job.id(), job.lockToken(), Instant.now(), message));
+        tx.executeWithoutResult(s -> repository.markFailed(job.id(), job.lockToken(), JobClock.now(), message));
         if (error instanceof RetryHint) {
             log.error("Job {} {} failed permanently after {} attempt(s): {}", job.type(), job.id(), job.attempt(), message);
         } else {
@@ -327,7 +327,7 @@ public class JobWorker {
         }
         try {
             List<UUID> leases = List.copyOf(activeLeases);
-            tx.executeWithoutResult(s -> repository.heartbeat(leases, Instant.now()));
+            tx.executeWithoutResult(s -> repository.heartbeat(leases, JobClock.now()));
         } catch (Exception e) {
             log.warn("Job lease heartbeat failed: {}", e.getMessage());
         }
@@ -335,7 +335,7 @@ public class JobWorker {
 
     private void releaseExpiredLeasesSafely() {
         try {
-            Instant now = Instant.now();
+            Instant now = JobClock.now();
             Integer released = tx.execute(s -> repository.releaseExpiredLeases(now, now.minus(properties.lease())));
             if (released != null && released > 0) {
                 log.warn("Returned {} job(s) with expired worker leases to the queue", released);
@@ -348,7 +348,7 @@ public class JobWorker {
 
     private void purgeSafely() {
         try {
-            Instant now = Instant.now();
+            Instant now = JobClock.now();
             tx.executeWithoutResult(s -> {
                 repository.deleteFinishedBefore(JobStatus.SUCCEEDED, now.minus(properties.succeededRetention()));
                 repository.deleteFinishedBefore(JobStatus.FAILED, now.minus(properties.failedRetention()));
