@@ -15,6 +15,8 @@ import {
   Search,
 } from 'lucide-react';
 import { CommandPalette, OPEN_PALETTE_EVENT } from './CommandPalette';
+import { AskChatProvider } from '../context/AskChatContext';
+import { AskCompanion } from './ask/AskCompanion';
 
 export const AppShell: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -70,6 +72,7 @@ export const AppShell: React.FC = () => {
     : (user?.email?.[0] || 'U').toUpperCase();
 
   return (
+    <AskChatProvider>
     <div
       className={`bg-[var(--color-surface-primary)] text-[var(--color-text-primary)] flex flex-col md:flex-row ${
         isFullBleed ? 'h-dvh overflow-hidden' : 'min-h-dvh'
@@ -270,20 +273,9 @@ export const AppShell: React.FC = () => {
         </main>
         <CommandPalette />
 
-        {/* Floating Quick Ask Assistant Trigger (available everywhere except /ask) */}
-        {!location.pathname.startsWith('/ask') && (
-          <button
-            onClick={() => navigate('/ask')}
-            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex items-center gap-2.5 p-3 sm:px-4 sm:py-2.5 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-xl shadow-violet-600/30 hover:scale-105 active:scale-95 transition-all cursor-pointer font-medium text-xs group"
-            title="Ask UNMUTE AI Assistant"
-            aria-label="Ask UNMUTE AI Assistant"
-          >
-            <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-            <span className="hidden sm:inline font-semibold">Ask UNMUTE</span>
-            <span className="hidden sm:inline text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono">RAG</span>
-          </button>
-        )}
+        <AskCompanion />
       </div>
     </div>
+    </AskChatProvider>
   );
 };
