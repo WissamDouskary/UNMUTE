@@ -17,6 +17,9 @@ spring:
     enabled: false
 
 unmute:
+  jobs:
+    # Tests run due jobs deterministically with JobWorker#drain.
+    worker-enabled: false
   jwt:
     secret: test-secret-that-is-at-least-64-characters-long-for-hmac-sha-key-validation!!
     access-token-expiry: 900

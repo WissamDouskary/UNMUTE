@@ -6,12 +6,11 @@ import com.unmute.common.exception.ConflictException;
 import com.unmute.common.exception.ResourceNotFoundException;
 import com.unmute.source.domain.Source;
 import com.unmute.source.domain.SourceStatus;
+import com.unmute.jobs.JobQueue;
 import com.unmute.source.dto.SourceDto;
-import com.unmute.source.event.SourceTranscriptionRequestedEvent;
 import com.unmute.source.repository.SourceRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -31,20 +30,20 @@ public class SourceService {
     private final SourceRepository sourceRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
-    private final ApplicationEventPublisher events;
+    private final JobQueue jobQueue;
 
     public SourceService(SourceRepository sourceRepository,
                          UserRepository userRepository,
                          FileStorageService fileStorageService,
-                         ApplicationEventPublisher events) {
+                         JobQueue jobQueue) {
         this.sourceRepository = sourceRepository;
         this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
-        this.events = events;
+        this.jobQueue = jobQueue;
     }
 
     /**
-     * Upload a file source, store it, and queue transcription once the source row is committed.
+     * Upload a file source, store it, and enqueue its transcription job in the same transaction.
      */
     public SourceDto uploadSource(UUID userId, MultipartFile file) throws IOException {
         User user = userRepository.findById(userId)
@@ -60,7 +59,7 @@ public class SourceService {
         Source source = sourceRepository.save(new Source(user, storedFilename, originalName, fileType, fileSize));
         log.info("Source uploaded: {} ({}), queueing transcription", originalName, source.getId());
 
-        events.publishEvent(new SourceTranscriptionRequestedEvent(source.getId()));
+        jobQueue.enqueue(TranscriptionJobHandler.jobFor(source.getId()));
         return SourceDto.fromEntity(source);
     }
 
@@ -102,7 +101,7 @@ public class SourceService {
         source.setErrorMessage(null);
         source = sourceRepository.save(source);
 
-        events.publishEvent(new SourceTranscriptionRequestedEvent(source.getId()));
+        jobQueue.enqueue(TranscriptionJobHandler.jobFor(source.getId()));
         return SourceDto.fromEntity(source);
     }
 

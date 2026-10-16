@@ -1,5 +1,6 @@
 package com.unmute.note.service;
 
+import com.unmute.ai.service.NoteJobScheduler;
 import com.unmute.auth.domain.User;
 import com.unmute.auth.repository.UserRepository;
 import com.unmute.common.dto.PageResponse;
@@ -8,9 +9,7 @@ import com.unmute.note.domain.Note;
 import com.unmute.note.dto.CreateNoteRequest;
 import com.unmute.note.dto.NoteDto;
 import com.unmute.note.dto.UpdateNoteRequest;
-import com.unmute.note.event.NoteContentChangedEvent;
 import com.unmute.note.repository.NoteRepository;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,16 +27,16 @@ public class NoteService {
 
     private final NoteRepository noteRepository;
     private final UserRepository userRepository;
-    private final ApplicationEventPublisher events;
+    private final NoteJobScheduler noteJobs;
 
     public NoteService(
             NoteRepository noteRepository,
             UserRepository userRepository,
-            ApplicationEventPublisher events
+            NoteJobScheduler noteJobs
     ) {
         this.noteRepository = noteRepository;
         this.userRepository = userRepository;
-        this.events = events;
+        this.noteJobs = noteJobs;
     }
 
     public NoteDto createNote(UUID userId, CreateNoteRequest request) {
@@ -53,7 +52,7 @@ public class NoteService {
         }
 
         Note saved = noteRepository.save(note);
-        events.publishEvent(new NoteContentChangedEvent(saved.getId()));
+        noteJobs.contentChanged(saved.getId());
         return NoteDto.fromEntity(saved);
     }
 
@@ -111,7 +110,7 @@ public class NoteService {
 
         Note updated = noteRepository.save(note);
         if (!EmbeddableFields.of(updated).equals(embeddableBefore)) {
-            events.publishEvent(new NoteContentChangedEvent(updated.getId()));
+            noteJobs.contentChanged(updated.getId());
         }
         return NoteDto.fromEntity(updated);
     }
