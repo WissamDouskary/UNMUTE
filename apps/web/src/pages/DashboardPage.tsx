@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpRight, CheckSquare, FileText, Loader2 } from 'lucide-react';
+import { ArrowUpRight, CheckSquare, FileText, Loader2, Radio } from 'lucide-react';
 import { apiClient } from '@unmute/api-client';
-import type { Note, Task } from '@unmute/api-client';
+import type { Note, Source, Task } from '@unmute/api-client';
 import { useAuth } from '../context/AuthContext';
 import { OPEN_PALETTE_EVENT } from '../components/CommandPalette';
 
@@ -62,11 +62,16 @@ export const DashboardPage: React.FC = () => {
 
   const notes = notesQuery.data?.content ?? [];
   const tasks = tasksQuery.data ?? [];
+  const sources = sourcesQuery.data ?? [];
   const openTasks = tasks.filter((task) => !task.isCompleted);
   const dueToday = openTasks.filter((task) => task.dueDate && sameLocalDay(task.dueDate));
-  const overdue = openTasks.filter((task) => task.dueDate && isOverdue(task.dueDate) && !sameLocalDay(task.dueDate));
-  const attention = [...overdue, ...dueToday];
+  const upcoming = [...openTasks]
+    .sort((a, b) => dueRank(a) - dueRank(b))
+    .slice(0, 6);
   const recent = [...notes].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')).slice(0, 6);
+  const running = sources.filter((source) => source.status === 'PENDING' || source.status === 'TRANSCRIBING');
+  const failed = sources.filter((source) => source.status === 'FAILED');
+  const workflows = [...running, ...failed].slice(0, 5);
   const loading = notesQuery.isLoading || tasksQuery.isLoading;
 
   return (
@@ -90,12 +95,11 @@ export const DashboardPage: React.FC = () => {
         <Stat label="Notes" value={notesQuery.data?.totalElements} href="/notes" loading={notesQuery.isLoading} />
         <Stat label="Open tasks" value={tasksQuery.isLoading ? undefined : openTasks.length} href="/tasks" loading={tasksQuery.isLoading} />
         <Stat label="Due today" value={tasksQuery.isLoading ? undefined : dueToday.length} href="/tasks" loading={tasksQuery.isLoading} />
-        <Stat label="Sources" value={sourcesQuery.data?.length} href="/sources" loading={sourcesQuery.isLoading} />
+        <Stat label="In progress" value={sourcesQuery.isLoading ? undefined : running.length} href="/sources" loading={sourcesQuery.isLoading} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <section>
-          <SectionTitle icon={FileText} label="Recent notes" href="/notes" />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <Widget title="Recently captured" icon={FileText} href="/notes">
           {loading ? (
             <Loading />
           ) : recent.length === 0 ? (
@@ -107,22 +111,35 @@ export const DashboardPage: React.FC = () => {
               ))}
             </ul>
           )}
-        </section>
+        </Widget>
 
-        <section>
-          <SectionTitle icon={CheckSquare} label="Due" href="/tasks" />
+        <Widget title="Upcoming tasks" icon={CheckSquare} href="/tasks">
           {tasksQuery.isLoading ? (
             <Loading />
-          ) : attention.length === 0 ? (
-            <Empty text="Nothing due today." action="New task" href="/tasks?compose=1" />
+          ) : upcoming.length === 0 ? (
+            <Empty text="No open tasks." action="New task" href="/tasks?compose=1" />
           ) : (
             <ul className="divide-y divide-zinc-800/80">
-              {attention.map((task) => (
-                <TaskRow key={task.id} task={task} overdue={overdue.some((item) => item.id === task.id)} />
+              {upcoming.map((task) => (
+                <TaskRow key={task.id} task={task} />
               ))}
             </ul>
           )}
-        </section>
+        </Widget>
+
+        <Widget title="Active AI workflows" icon={Radio} href="/sources">
+          {sourcesQuery.isLoading ? (
+            <Loading />
+          ) : workflows.length === 0 ? (
+            <Empty text="Nothing is processing." action="Record voice" href="/sources?record=1" />
+          ) : (
+            <ul className="divide-y divide-zinc-800/80">
+              {workflows.map((source) => (
+                <WorkflowRow key={source.id} source={source} />
+              ))}
+            </ul>
+          )}
+        </Widget>
       </div>
     </div>
   );
@@ -152,18 +169,46 @@ function Stat({
   );
 }
 
-function SectionTitle({ icon: Icon, label, href }: { icon: React.ElementType; label: string; href: string }) {
+function dueRank(task: Task): number {
+  if (!task.dueDate) return Number.POSITIVE_INFINITY;
+  return parseDue(task.dueDate).getTime();
+}
+
+function dueLabel(task: Task): { text: string; tone: string } {
+  if (!task.dueDate) return { text: 'No date', tone: 'text-zinc-500' };
+  if (isOverdue(task.dueDate) && !sameLocalDay(task.dueDate)) return { text: 'Overdue', tone: 'text-red-400' };
+  if (sameLocalDay(task.dueDate)) return { text: 'Today', tone: 'text-amber-300' };
+  return {
+    text: parseDue(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    tone: 'text-zinc-500',
+  };
+}
+
+function Widget({
+  title,
+  icon: Icon,
+  href,
+  children,
+}: {
+  title: string;
+  icon: React.ElementType;
+  href: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex items-center justify-between mb-2">
-      <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
-        <Icon className="w-3.5 h-3.5" />
-        {label}
-      </h2>
-      <Link to={href} className="text-[11px] text-zinc-500 hover:text-zinc-200 inline-flex items-center gap-1">
-        View all
-        <ArrowUpRight className="w-3 h-3" />
-      </Link>
-    </div>
+    <section className="rounded-xl border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+          <Icon className="w-3.5 h-3.5" />
+          {title}
+        </h2>
+        <Link to={href} className="text-[11px] text-zinc-500 hover:text-zinc-200 inline-flex items-center gap-1">
+          View all
+          <ArrowUpRight className="w-3 h-3" />
+        </Link>
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -190,19 +235,35 @@ function NoteRow({ note }: { note: Note }) {
   );
 }
 
-function TaskRow({ task, overdue }: { task: Task; overdue: boolean }) {
+function TaskRow({ task }: { task: Task }) {
+  const label = dueLabel(task);
   return (
     <li>
       <Link
         to={task.noteId ? `/notes?noteId=${encodeURIComponent(task.noteId)}` : '/tasks'}
         className="flex items-center gap-3 py-2.5 hover:bg-zinc-900/50 -mx-2 px-2 rounded-lg"
       >
-        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${overdue ? 'bg-red-400' : 'bg-amber-400'}`} />
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${label.text === 'Overdue' ? 'bg-red-400' : label.text === 'Today' ? 'bg-amber-400' : 'bg-zinc-600'}`} />
         <p dir="auto" className="min-w-0 flex-1 text-sm text-zinc-200 truncate text-start">
           {task.title}
         </p>
-        <span className={`text-[11px] shrink-0 ${overdue ? 'text-red-400' : 'text-zinc-500'}`}>
-          {overdue ? 'Overdue' : 'Today'}
+        <span className={`text-[11px] shrink-0 ${label.tone}`}>{label.text}</span>
+      </Link>
+    </li>
+  );
+}
+
+function WorkflowRow({ source }: { source: Source }) {
+  const live = source.status === 'PENDING' || source.status === 'TRANSCRIBING';
+  return (
+    <li>
+      <Link to="/sources" className="flex items-center gap-3 py-2.5 hover:bg-zinc-900/50 -mx-2 px-2 rounded-lg">
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${live ? 'bg-violet-400 animate-pulse' : 'bg-red-400'}`} />
+        <p dir="auto" className="min-w-0 flex-1 text-sm text-zinc-200 truncate text-start">
+          {source.originalName}
+        </p>
+        <span className={`text-[11px] shrink-0 ${live ? 'text-violet-300' : 'text-red-400'}`}>
+          {live ? 'Running' : 'Failed'}
         </span>
       </Link>
     </li>
