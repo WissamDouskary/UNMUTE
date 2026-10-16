@@ -32,7 +32,36 @@ import {
   Loader2,
 } from 'lucide-react';
 
+import { Task } from '@unmute/api-client';
+
 const lowlight = createLowlight(common);
+
+export function cleanTaskTitle(raw: string): string {
+  if (!raw) return '';
+  return raw
+    .replace(/^(\s*[-*•]\s*|\[[ xX]\]\s*)*/g, '')
+    .replace(/^(🚨\s*\[URGENT\]\s*|⚠️\s*\[HIGH\]\s*|⚡\s*\[MEDIUM\]\s*|📌\s*\[LOW\]\s*)/i, '')
+    .replace(/^(TODO:?|Action:?|Task:?)\s*/i, '')
+    .trim();
+}
+
+const CustomTaskItem = TaskItem.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      taskId: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-task-id'),
+        renderHTML: (attributes) => {
+          if (!attributes.taskId) return {};
+          return {
+            'data-task-id': attributes.taskId,
+          };
+        },
+      },
+    };
+  },
+});
 
 interface RichTextEditorProps {
   content: string;
@@ -42,6 +71,8 @@ interface RichTextEditorProps {
   onAiSummarize?: () => void;
   onAiExtractTasks?: () => void;
   isAiLoading?: boolean;
+  linkedTasks?: Task[];
+  onTaskCheckChange?: (task: { taskId?: string | null; title: string; checked: boolean }) => void;
 }
 
 interface CommandItem {
@@ -134,6 +165,8 @@ export function RichTextEditor({
   onAiSummarize,
   onAiExtractTasks,
   isAiLoading = false,
+  linkedTasks,
+  onTaskCheckChange,
 }: RichTextEditorProps) {
   // --- Slash Command State ---
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -147,6 +180,25 @@ export function RichTextEditor({
 
   // Table Context State (Active when selection is inside a table)
   const [isInTable, setIsInTable] = useState(false);
+
+  // Ref tracking previous task checked states to detect user clicks on checkboxes
+  const previousTaskStates = useRef<Map<string, boolean>>(new Map());
+  const isExternalSyncRef = useRef<boolean>(false);
+  const onTaskCheckChangeRef = useRef(onTaskCheckChange);
+  onTaskCheckChangeRef.current = onTaskCheckChange;
+
+  const snapshotTaskStates = useCallback((doc: any) => {
+    const map = new Map<string, boolean>();
+    doc.descendants((node: any) => {
+      if (node.type.name === 'taskItem') {
+        const key = (node.attrs.taskId as string) || cleanTaskTitle(node.textContent);
+        if (key) {
+          map.set(key, Boolean(node.attrs.checked));
+        }
+      }
+    });
+    previousTaskStates.current = map;
+  }, []);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -169,7 +221,7 @@ export function RichTextEditor({
       TableHeader,
       TableCell,
       TaskList,
-      TaskItem.configure({
+      CustomTaskItem.configure({
         nested: true,
       }),
       CodeBlockLowlight.configure({
@@ -185,10 +237,33 @@ export function RichTextEditor({
         },
       }),
     ],
+    onCreate: ({ editor }) => {
+      snapshotTaskStates(editor.state.doc);
+    },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       lastEmittedHtml.current = html;
       onChange(html);
+
+      // Intercept checkbox clicks inside editor canvas
+      if (!isExternalSyncRef.current) {
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === 'taskItem') {
+            const taskId = (node.attrs.taskId as string) || null;
+            const title = cleanTaskTitle(node.textContent);
+            const key = taskId || title;
+            const checked = Boolean(node.attrs.checked);
+
+            if (key) {
+              const prev = previousTaskStates.current.get(key);
+              if (prev !== undefined && prev !== checked) {
+                onTaskCheckChangeRef.current?.({ taskId, title, checked });
+              }
+              previousTaskStates.current.set(key, checked);
+            }
+          }
+        });
+      }
     },
     onSelectionUpdate: ({ editor }) => {
       const active = editor.isActive('table');
@@ -203,8 +278,55 @@ export function RichTextEditor({
     if (editor && content !== lastEmittedHtml.current && content !== editor.getHTML()) {
       lastEmittedHtml.current = content;
       editor.commands.setContent(content || '<p></p>', { emitUpdate: false });
+      snapshotTaskStates(editor.state.doc);
     }
-  }, [content, editor]);
+  }, [content, editor, snapshotTaskStates]);
+
+  // Bi-directional sync: When linkedTasks change (e.g. from drawer or /tasks), update Tiptap checkboxes in-place
+  useEffect(() => {
+    if (!editor || !linkedTasks) return;
+
+    const { tr, doc } = editor.state;
+    let hasChanges = false;
+
+    doc.descendants((node, pos) => {
+      if (node.type.name === 'taskItem') {
+        const nodeTaskId = node.attrs.taskId as string | null;
+        const nodeTitle = cleanTaskTitle(node.textContent);
+
+        const matchingTask = linkedTasks.find(
+          (t) => (nodeTaskId && t.id === nodeTaskId) || (nodeTitle && cleanTaskTitle(t.title) === nodeTitle)
+        );
+
+        if (matchingTask) {
+          const isCompleted = matchingTask.isCompleted;
+          const currentChecked = Boolean(node.attrs.checked);
+
+          if (currentChecked !== isCompleted || (!nodeTaskId && matchingTask.id)) {
+            hasChanges = true;
+            tr.setNodeMarkup(pos, undefined, {
+              ...node.attrs,
+              checked: isCompleted,
+              taskId: matchingTask.id,
+            });
+
+            const key = matchingTask.id || nodeTitle;
+            previousTaskStates.current.set(key, isCompleted);
+          }
+        }
+      }
+    });
+
+    if (hasChanges) {
+      isExternalSyncRef.current = true;
+      editor.view.dispatch(tr);
+      isExternalSyncRef.current = false;
+
+      const newHtml = editor.getHTML();
+      lastEmittedHtml.current = newHtml;
+      onChange(newHtml);
+    }
+  }, [editor, linkedTasks, onChange]);
 
   const slashCommands = useMemo<CommandItem[]>(() => {
     const aiCommands: CommandItem[] = [];

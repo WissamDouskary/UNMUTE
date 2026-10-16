@@ -63,27 +63,57 @@ public class AiService {
                 note = noteRepository.findByIdAndUserId(request.noteId(), userId).orElse(null);
             }
 
-            List<Task> tasksToSave = new ArrayList<>();
-            for (ExtractedTaskItem item : extracted) {
-                Task task = new Task(
-                        user,
-                        note,
-                        item.title(),
-                        item.description(),
-                        item.priority(),
-                        item.dueDate()
-                );
-                tasksToSave.add(task);
+            List<Task> existingTasks = (note != null)
+                    ? taskRepository.findByUserIdAndNoteIdOrderByCreatedAtDesc(userId, note.getId())
+                    : List.of();
+
+            java.util.Map<String, Task> existingByTitle = new java.util.HashMap<>();
+            for (Task t : existingTasks) {
+                if (t.getTitle() != null) {
+                    existingByTitle.put(t.getTitle().trim().toLowerCase(), t);
+                }
             }
 
-            List<Task> saved = taskRepository.saveAll(tasksToSave);
-
-            // Re-map with savedTaskId
+            List<Task> tasksToSave = new ArrayList<>();
             List<ExtractedTaskItem> withIds = new ArrayList<>();
-            for (int i = 0; i < extracted.size(); i++) {
-                ExtractedTaskItem original = extracted.get(i);
-                UUID savedId = (i < saved.size()) ? saved.get(i).getId() : null;
-                withIds.add(original.withSavedTaskId(savedId));
+
+            for (ExtractedTaskItem item : extracted) {
+                String cleanTitle = item.title() != null ? item.title().trim().toLowerCase() : "";
+                Task existing = existingByTitle.get(cleanTitle);
+                if (existing != null) {
+                    withIds.add(item.withSavedTaskId(existing.getId()));
+                } else {
+                    Task task = new Task(
+                            user,
+                            note,
+                            item.title(),
+                            item.description(),
+                            item.priority(),
+                            item.dueDate()
+                    );
+                    tasksToSave.add(task);
+                }
+            }
+
+            if (!tasksToSave.isEmpty()) {
+                List<Task> saved = taskRepository.saveAll(tasksToSave);
+                for (Task savedTask : saved) {
+                    ExtractedTaskItem original = extracted.stream()
+                            .filter(e -> e.title() != null && e.title().equalsIgnoreCase(savedTask.getTitle()))
+                            .findFirst()
+                            .orElse(null);
+                    if (original != null) {
+                        withIds.add(original.withSavedTaskId(savedTask.getId()));
+                    } else {
+                        withIds.add(new ExtractedTaskItem(
+                                savedTask.getTitle(),
+                                savedTask.getDescription(),
+                                savedTask.getPriority(),
+                                savedTask.getDueDate(),
+                                savedTask.getId()
+                        ));
+                    }
+                }
             }
 
             return new ExtractTasksResponse(withIds, withIds.size());

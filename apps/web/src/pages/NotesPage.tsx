@@ -23,7 +23,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { apiClient, Note, Task } from '@unmute/api-client';
-import { RichTextEditor } from '../components/RichTextEditor';
+import { RichTextEditor, cleanTaskTitle } from '../components/RichTextEditor';
 
 type FilterTab = 'all' | 'pinned' | 'archived';
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
@@ -831,10 +831,70 @@ export function NotesPage() {
 
   const toggleLinkedTaskMutation = useMutation({
     mutationFn: (taskId: string) => apiClient.toggleTaskCompleted(taskId),
+    onMutate: async (taskId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+      const previous = queryClient.getQueryData<Task[]>(['tasks', { noteId: selectedNoteId }]);
+
+      queryClient.setQueriesData<Task[]>({ queryKey: ['tasks'] }, (old) => {
+        if (!old) return [];
+        return old.map((t) => (t.id === taskId ? { ...t, isCompleted: !t.isCompleted } : t));
+      });
+
+      return { previous };
+    },
+    onError: (_err, _taskId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['tasks', { noteId: selectedNoteId }], context.previous);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
+
+  // Handle task checkbox toggled from inside the Tiptap editor canvas
+  const handleEditorTaskToggle = useCallback(
+    async ({ taskId, title, checked }: { taskId?: string | null; title: string; checked: boolean }) => {
+      const clean = cleanTaskTitle(title);
+      const targetTask = linkedTasks.find(
+        (t) => (taskId && t.id === taskId) || (clean && cleanTaskTitle(t.title) === clean)
+      );
+
+      if (targetTask) {
+        if (targetTask.isCompleted !== checked) {
+          // Optimistically update query cache so drawer / tasks page update in 0ms
+          queryClient.setQueriesData<Task[]>({ queryKey: ['tasks'] }, (old) => {
+            if (!old) return [];
+            return old.map((t) => (t.id === targetTask.id ? { ...t, isCompleted: checked } : t));
+          });
+
+          try {
+            await apiClient.updateTask(targetTask.id, { isCompleted: checked });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          } catch (err) {
+            console.error('Failed to sync editor task to database:', err);
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          }
+        }
+      } else if (selectedNoteId && clean) {
+        // User typed a task inside editor canvas and checked it — persist to DB linked to this note!
+        try {
+          const newTask = await apiClient.createTask({
+            title: clean,
+            noteId: selectedNoteId,
+            priority: 'MEDIUM',
+          });
+          if (checked) {
+            await apiClient.toggleTaskCompleted(newTask.id);
+          }
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        } catch (err) {
+          console.error('Failed to create task from editor canvas:', err);
+        }
+      }
+    },
+    [linkedTasks, selectedNoteId, queryClient]
+  );
 
   const createLinkedTaskMutation = useMutation({
     mutationFn: (taskTitle: string) =>
@@ -889,7 +949,7 @@ export function NotesPage() {
     },
   });
 
-  // --- AI Extract Tasks Mutation ---
+  // --- AI Extract Tasks Mutation with De-duplication ---
   const extractTasksMutation = useMutation({
     mutationFn: (noteContent: string) =>
       apiClient.extractTasksFromContent({
@@ -903,29 +963,48 @@ export function NotesPage() {
     onSuccess: (res) => {
       setIsAiLoading(false);
       if (res.tasks && res.tasks.length > 0) {
-        const taskItemsHtml = res.tasks
-          .map(
-            (t) =>
-              `<li data-type="taskItem" data-checked="false"><div><p>${
-                t.priority === 'URGENT'
-                  ? '🚨 [URGENT] '
-                  : t.priority === 'HIGH'
-                  ? '⚠️ [HIGH] '
-                  : ''
-              }${t.title}</p></div></li>`
-          )
-          .join('');
+        // De-duplicate: check if taskItems with these titles already exist in the checklist
+        const taskItemRegex = /<li[^>]*data-type=["']taskItem["'][^>]*>(.*?)<\/li>/gi;
+        const existingTaskItemTitles: string[] = [];
+        let match;
+        while ((match = taskItemRegex.exec(contentRef.current)) !== null) {
+          const text = (match[1] || '').replace(/<[^>]*>/g, '').trim().toLowerCase();
+          existingTaskItemTitles.push(cleanTaskTitle(text));
+        }
 
-        const taskListBlock = `<p></p><ul data-type="taskList">${taskItemsHtml}</ul><p></p>`;
-        const nextContent = `${contentRef.current}${taskListBlock}`;
-        setContent(nextContent);
-        contentRef.current = nextContent;
-        triggerAutoSave({ content: nextContent });
+        const newTasks = res.tasks.filter((t) => {
+          const clean = cleanTaskTitle(t.title).toLowerCase();
+          return !existingTaskItemTitles.includes(clean);
+        });
+
+        if (newTasks.length > 0) {
+          const taskItemsHtml = newTasks
+            .map(
+              (t) =>
+                `<li data-type="taskItem" data-checked="false"${t.savedTaskId ? ` data-task-id="${t.savedTaskId}"` : ''}><div><p>${
+                  t.priority === 'URGENT'
+                    ? '🚨 [URGENT] '
+                    : t.priority === 'HIGH'
+                    ? '⚠️ [HIGH] '
+                    : ''
+                }${t.title}</p></div></li>`
+            )
+            .join('');
+
+          const taskListBlock = `<p></p><ul data-type="taskList">${taskItemsHtml}</ul><p></p>`;
+          const nextContent = `${contentRef.current}${taskListBlock}`;
+          setContent(nextContent);
+          contentRef.current = nextContent;
+          triggerAutoSave({ content: nextContent });
+        }
 
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
 
         setAiNotification({
-          message: `Extracted ${res.count} action items and synced with Tasks system!`,
+          message:
+            newTasks.length > 0
+              ? `Extracted ${res.count} action items (${newTasks.length} new) and synced with Tasks system!`
+              : `All ${res.count} action items are already in sync with Tasks!`,
           type: 'success',
         });
       } else {
@@ -1607,6 +1686,8 @@ export function NotesPage() {
                     onAiSummarize={handleAiSummarize}
                     onAiExtractTasks={handleAiExtractTasks}
                     isAiLoading={isAiLoading}
+                    linkedTasks={linkedTasks}
+                    onTaskCheckChange={handleEditorTaskToggle}
                   />
                 </div>
               </div>

@@ -185,11 +185,17 @@ public class MockAiProvider implements AiProvider {
 
     private String stripHtml(String html) {
         if (html == null) return "";
-        return HTML_TAGS_PATTERN.matcher(html).replaceAll(" ")
+        return html
+                .replaceAll("(?i)<br\\s*/?>", "\n")
+                .replaceAll("(?i)</(p|div|li|tr|h[1-6])>", "\n")
+                .replaceAll("<[^>]*>", " ")
                 .replace("&nbsp;", " ")
                 .replace("&amp;", "&")
                 .replace("&lt;", "<")
                 .replace("&gt;", ">")
-                .replaceAll("\\s+", " ");
+                .replaceAll("[ \\t]+", " ")
+                .replaceAll("(?m)^\\s+", "")
+                .replaceAll("\\n{2,}", "\n")
+                .trim();
     }
 }
