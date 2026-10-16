@@ -57,3 +57,26 @@ unmute:
   jobs:
     worker-enabled: ${JOBS_WORKER_ENABLED:true}
     concurrency: ${JOBS_CONCURRENCY:4}
+
+  # Keys are read from the environment only (.env via docker compose) and are never logged.
+  # "auto" uses a real provider whenever its key is set and falls back to offline mocks otherwise.
+  ai:
+    llm-provider: ${AI_LLM_PROVIDER:auto}
+    embedding-provider: ${AI_EMBEDDING_PROVIDER:auto}
+    transcription-provider: ${AI_TRANSCRIPTION_PROVIDER:auto}
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      chat-model: ${OPENAI_CHAT_MODEL:gpt-4o}
+      embedding-model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+      transcription-model: ${OPENAI_TRANSCRIPTION_MODEL:whisper-1}
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com/v1}
+      model: ${ANTHROPIC_MODEL:claude-sonnet-5-5}
+      effort: ${ANTHROPIC_EFFORT:medium}
+    auto-tag:
+      enabled: ${AI_AUTO_TAG_ENABLED:true}
+    rag:
+      # min-similarity defaults to the active embedding model's calibrated floor; set it to override.
+      relative-cutoff: ${AI_RAG_RELATIVE_CUTOFF:0.6}

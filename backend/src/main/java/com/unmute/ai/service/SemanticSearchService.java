@@ -40,6 +40,6 @@ public class SemanticSearchService {
 
         int sanitizedLimit = Math.max(1, Math.min(limit, 50));
         String queryVectorStr = embeddingService.generateQueryVector(trimmed);
-        return noteEmbeddingRepository.searchSimilarNotes(userId, queryVectorStr, sanitizedLimit);
+        return noteEmbeddingRepository.searchSimilarNotes(userId, queryVectorStr, embeddingService.modelId(), sanitizedLimit);
     }
 }

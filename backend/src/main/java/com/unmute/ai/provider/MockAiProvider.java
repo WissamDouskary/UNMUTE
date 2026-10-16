@@ -3,8 +3,6 @@ package com.unmute.ai.provider;
 import com.unmute.ai.dto.ExtractedTaskItem;
 import com.unmute.ai.dto.SummarizeResponse;
 import com.unmute.task.domain.TaskPriority;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -12,8 +10,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@Component
-@ConditionalOnProperty(name = "unmute.ai.provider", havingValue = "mock", matchIfMissing = true)
+/** Offline, rule-based stand-in for an LLM; used when no Anthropic or OpenAI key is configured. */
 public class MockAiProvider implements AiProvider {
 
     private static final Pattern HTML_TAGS_PATTERN = Pattern.compile("<[^>]*>");

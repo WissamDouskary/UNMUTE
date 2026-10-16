@@ -1,5 +1,6 @@
 package com.unmute.common.exception;
 
+import com.unmute.ai.client.AiProviderException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -98,6 +99,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest()
                 .body(new ApiErrorResponse(HttpStatus.BAD_REQUEST.value(), "Malformed request body"));
+    }
+
+    /** Upstream AI failures: 503 when retrying later can help (rate limit, outage), 502 otherwise. */
+    @ExceptionHandler(AiProviderException.class)
+    public ResponseEntity<ApiErrorResponse> handleAiProvider(AiProviderException ex) {
+        HttpStatus status = ex.isRetryable() ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.BAD_GATEWAY;
+        log.warn("AI provider call failed ({} upstream status {}): {}", ex.getProvider(), ex.getStatus(), ex.getMessage());
+        return ResponseEntity.status(status).body(new ApiErrorResponse(status.value(), ex.getMessage()));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

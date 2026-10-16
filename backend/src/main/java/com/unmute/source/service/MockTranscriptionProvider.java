@@ -2,7 +2,6 @@ package com.unmute.source.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Random;
@@ -11,7 +10,6 @@ import java.util.Random;
  * Mock transcription provider for development mode.
  * Simulates a ~3 second transcription delay and returns realistic mock transcripts.
  */
-@Service
 public class MockTranscriptionProvider implements TranscriptionService {
 
     private static final Logger log = LoggerFactory.getLogger(MockTranscriptionProvider.class);

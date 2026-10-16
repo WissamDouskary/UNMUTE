@@ -20,6 +20,11 @@ unmute:
   jobs:
     # Tests run due jobs deterministically with JobWorker#drain.
     worker-enabled: false
+  ai:
+    # Never call real APIs from tests, even if a developer has keys in their environment.
+    llm-provider: mock
+    embedding-provider: mock
+    transcription-provider: mock
   jwt:
     secret: test-secret-that-is-at-least-64-characters-long-for-hmac-sha-key-validation!!
     access-token-expiry: 900

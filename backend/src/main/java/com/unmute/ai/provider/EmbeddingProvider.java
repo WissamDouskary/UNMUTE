@@ -2,12 +2,30 @@ package com.unmute.ai.provider;
 
 public interface EmbeddingProvider {
 
-    int DIMENSION = 384;
+    /** Must match the {@code vector(N)} column in note_embeddings (V8). */
+    int DIMENSION = 1536;
 
     /**
-     * Generates a 384-dimensional unit vector embedding representing the given text.
+     * Generates a {@link #DIMENSION}-dimensional embedding representing the given text.
      */
     float[] generateEmbedding(String text);
+
+    /**
+     * Identifies the vector space. Stored with every embedding so vectors from different models are never
+     * compared, and a model change re-embeds the corpus.
+     */
+    String modelId();
+
+    /** Longest input sent to the model; longer note text is cut. */
+    default int maxInputChars() {
+        return 16_000;
+    }
+
+    /**
+     * Cosine similarity below which a search hit is treated as unrelated when grounding answers. Score
+     * distributions differ per model, so each provider supplies its own calibrated floor.
+     */
+    double relevanceFloor();
 
     /**
      * Formats the float array into a PostgreSQL pgvector literal format: '[0.123, -0.456, ...]'

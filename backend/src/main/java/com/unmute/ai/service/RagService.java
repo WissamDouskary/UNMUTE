@@ -3,6 +3,7 @@ package com.unmute.ai.service;
 import com.unmute.ai.dto.AskResponse;
 import com.unmute.ai.dto.SemanticSearchResultDto;
 import com.unmute.ai.provider.AiProvider;
+import com.unmute.ai.provider.EmbeddingProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -21,15 +22,20 @@ public class RagService {
     private final double minSimilarity;
     private final double relativeCutoff;
 
+    /**
+     * @param minSimilarityOverride {@code unmute.ai.rag.min-similarity}; when unset the embedding model's
+     *                              own calibrated floor is used
+     */
     public RagService(
             SemanticSearchService semanticSearchService,
             AiProvider aiProvider,
-            @Value("${unmute.ai.rag.min-similarity:0.22}") double minSimilarity,
+            EmbeddingProvider embeddingProvider,
+            @Value("${unmute.ai.rag.min-similarity:#{null}}") Double minSimilarityOverride,
             @Value("${unmute.ai.rag.relative-cutoff:0.6}") double relativeCutoff
     ) {
         this.semanticSearchService = semanticSearchService;
         this.aiProvider = aiProvider;
-        this.minSimilarity = minSimilarity;
+        this.minSimilarity = minSimilarityOverride != null ? minSimilarityOverride : embeddingProvider.relevanceFloor();
         this.relativeCutoff = relativeCutoff;
     }
 

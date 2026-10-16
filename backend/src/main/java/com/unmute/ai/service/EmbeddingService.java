@@ -76,13 +76,17 @@ public class EmbeddingService implements JobHandler {
             return; // Deleted before we got to it; the FK cascade already removed any old vector.
         }
 
-        float[] vector = embeddingProvider.generateEmbedding(input.text());
+        String text = input.text().length() > embeddingProvider.maxInputChars()
+                ? input.text().substring(0, embeddingProvider.maxInputChars())
+                : input.text();
+        float[] vector = embeddingProvider.generateEmbedding(text);
         try {
             noteEmbeddingRepository.upsertEmbedding(
                     noteId,
                     input.userId(),
                     embeddingProvider.toVectorString(vector),
-                    truncate(input.text(), MAX_CHUNK_TEXT)
+                    truncate(text, MAX_CHUNK_TEXT),
+                    embeddingProvider.modelId()
             );
             log.debug("Synchronized pgvector embedding for note {}", noteId);
         } catch (DataIntegrityViolationException e) {
@@ -95,17 +99,24 @@ public class EmbeddingService implements JobHandler {
         return embeddingProvider.toVectorString(vector);
     }
 
-    /** Backfills notes that predate pgvector. Pending jobs coalesce, so re-running this is cheap. */
+    public String modelId() {
+        return embeddingProvider.modelId();
+    }
+
+    /**
+     * Backfills notes without a vector and re-embeds those from another model (e.g. after adding an OpenAI
+     * key). Pending jobs coalesce, so re-running this on every start is cheap.
+     */
     @EventListener(ApplicationReadyEvent.class)
     public void enqueueMissingEmbeddingsOnStartup() {
         try {
-            List<UUID> missingIds = noteEmbeddingRepository.findNoteIdsWithoutEmbeddings();
+            List<UUID> missingIds = noteEmbeddingRepository.findNoteIdsNeedingEmbedding(embeddingProvider.modelId());
             if (missingIds.isEmpty()) {
-                log.info("All notes have pgvector embeddings. Semantic search is fully warm.");
+                log.info("All notes have {} embeddings. Semantic search is fully warm.", embeddingProvider.modelId());
                 return;
             }
             tx.executeWithoutResult(status -> missingIds.forEach(noteJobs::reindex));
-            log.info("Queued {} notes missing pgvector embeddings for backfill.", missingIds.size());
+            log.info("Queued {} notes for {} embedding.", missingIds.size(), embeddingProvider.modelId());
         } catch (Exception e) {
             log.warn("Startup embedding backfill skipped: {}", e.getMessage());
         }

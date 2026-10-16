@@ -1,8 +1,5 @@
 package com.unmute.ai.provider;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
@@ -10,13 +7,21 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Mock embedding provider that generates deterministic, normalized 384-dimensional
- * vector embeddings using feature hashing and token projection.
- * This simulates a SentenceTransformer model (like all-MiniLM-L6-v2) without API costs.
+ * Offline embedding provider: deterministic, normalized vectors from feature hashing and token projection.
+ * Captures keyword overlap only, not meaning; used when no OpenAI key is configured.
  */
-@Component
-@ConditionalOnProperty(name = "unmute.ai.embedding-provider", havingValue = "mock", matchIfMissing = true)
 public class MockEmbeddingProvider implements EmbeddingProvider {
+
+    @Override
+    public String modelId() {
+        return "mock:feature-hash:" + DIMENSION;
+    }
+
+    /** Keyword-overlap vectors: a short question sharing one or two terms with a note scores around 0.1. */
+    @Override
+    public double relevanceFloor() {
+        return 0.08;
+    }
 
     private static final Pattern CLEAN_PATTERN = Pattern.compile("<[^>]*>|[^a-zA-Z0-9\\s]");
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");

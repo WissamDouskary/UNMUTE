@@ -221,14 +221,14 @@ public class TranscriptionJobHandler implements JobHandler {
     }
 
     private String formatTranscriptAsHtml(String transcript, String originalName, int durationSeconds) {
-        String minutes = String.valueOf(durationSeconds / 60);
-        String seconds = String.format("%02d", durationSeconds % 60);
-        String duration = minutes + ":" + seconds;
-
         StringBuilder html = new StringBuilder();
         html.append("<p><strong>🎙 Voice Recording Transcript</strong></p>");
-        html.append("<p><em>Source: ").append(escapeHtml(originalName))
-                .append(" • Duration: ").append(duration).append("</em></p>");
+        html.append("<p><em>Source: ").append(escapeHtml(originalName));
+        if (durationSeconds > 0) {
+            html.append(" • Duration: ").append(durationSeconds / 60).append(':')
+                    .append(String.format("%02d", durationSeconds % 60));
+        }
+        html.append("</em></p>");
         html.append("<hr>");
 
         String[] sentences = transcript.split("(?<=[.!?])\\s+");
