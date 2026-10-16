@@ -10,7 +10,8 @@ import java.util.regex.Pattern;
  */
 public class AiProviderException extends RuntimeException implements RetryHint {
 
-    private static final Pattern SECRET = Pattern.compile("(sk-[A-Za-z0-9_\\-]{4})[A-Za-z0-9_\\-]{6,}");
+    private static final Pattern SECRET = Pattern.compile(
+            "(?:(sk-[A-Za-z0-9_\\-]{4})|(AIza[A-Za-z0-9_\\-]{4}))[A-Za-z0-9_\\-]{6,}");
 
     private final String provider;
     private final int status;
@@ -48,6 +49,6 @@ public class AiProviderException extends RuntimeException implements RetryHint {
     }
 
     static String redact(String message) {
-        return message == null ? null : SECRET.matcher(message).replaceAll("$1****");
+        return message == null ? null : SECRET.matcher(message).replaceAll("$1$2****");
     }
 }

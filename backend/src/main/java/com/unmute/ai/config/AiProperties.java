@@ -11,14 +11,15 @@ import java.time.Duration;
  */
 @ConfigurationProperties("unmute.ai")
 public record AiProperties(
-        /* auto | anthropic | openai | mock. auto prefers Anthropic, then OpenAI, then the offline mock. */
+        /* auto | anthropic | openai | gemini | mock. auto prefers Anthropic, then OpenAI, then Gemini, then mock. */
         @DefaultValue("auto") String llmProvider,
-        /* auto | openai | mock */
+        /* auto | openai | gemini | mock */
         @DefaultValue("auto") String embeddingProvider,
-        /* auto | openai | mock */
+        /* auto | openai | gemini | mock */
         @DefaultValue("auto") String transcriptionProvider,
         @DefaultValue OpenAi openai,
         @DefaultValue Anthropic anthropic,
+        @DefaultValue Gemini gemini,
         @DefaultValue AutoTag autoTag
 ) {
 
@@ -62,6 +63,30 @@ public record AiProperties(
         public String toString() {
             return "Anthropic[apiKey=" + mask(apiKey) + ", baseUrl=" + baseUrl + ", model=" + model
                     + ", effort=" + effort + "]";
+        }
+    }
+
+    public record Gemini(
+            @DefaultValue("") String apiKey,
+            @DefaultValue("https://generativelanguage.googleapis.com/v1beta/openai") String baseUrl,
+            @DefaultValue("https://generativelanguage.googleapis.com/v1beta") String nativeBaseUrl,
+            @DefaultValue("gemini-2.5-flash") String chatModel,
+            @DefaultValue("gemini-embedding-001") String embeddingModel,
+            @DefaultValue("gemini-2.5-flash") String transcriptionModel,
+            @DefaultValue("4096") int maxCompletionTokens,
+            @DefaultValue("PT10S") Duration connectTimeout,
+            @DefaultValue("PT120S") Duration readTimeout,
+            @DefaultValue("PT10M") Duration transcriptionTimeout
+    ) {
+        public boolean hasKey() {
+            return apiKey != null && !apiKey.isBlank();
+        }
+
+        @Override
+        public String toString() {
+            return "Gemini[apiKey=" + mask(apiKey) + ", baseUrl=" + baseUrl
+                    + ", chatModel=" + chatModel + ", embeddingModel=" + embeddingModel
+                    + ", transcriptionModel=" + transcriptionModel + "]";
         }
     }
 

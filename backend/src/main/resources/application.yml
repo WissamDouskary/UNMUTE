@@ -75,6 +75,13 @@ unmute:
       base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com/v1}
       model: ${ANTHROPIC_MODEL:claude-sonnet-5-5}
       effort: ${ANTHROPIC_EFFORT:medium}
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
+      native-base-url: ${GEMINI_NATIVE_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+      chat-model: ${GEMINI_CHAT_MODEL:gemini-2.5-flash}
+      embedding-model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+      transcription-model: ${GEMINI_TRANSCRIPTION_MODEL:gemini-2.5-flash}
     auto-tag:
       enabled: ${AI_AUTO_TAG_ENABLED:true}
     rag:

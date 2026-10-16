@@ -2,14 +2,17 @@ package com.unmute.ai.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unmute.ai.client.AnthropicClient;
+import com.unmute.ai.client.GeminiClient;
 import com.unmute.ai.client.LlmClient;
 import com.unmute.ai.client.OpenAiClient;
 import com.unmute.ai.provider.AiProvider;
 import com.unmute.ai.provider.EmbeddingProvider;
+import com.unmute.ai.provider.GeminiEmbeddingProvider;
 import com.unmute.ai.provider.LlmAiProvider;
 import com.unmute.ai.provider.MockAiProvider;
 import com.unmute.ai.provider.MockEmbeddingProvider;
 import com.unmute.ai.provider.OpenAiEmbeddingProvider;
+import com.unmute.source.service.GeminiTranscriptionService;
 import com.unmute.source.service.MockTranscriptionProvider;
 import com.unmute.source.service.OpenAiTranscriptionService;
 import com.unmute.source.service.TranscriptionService;
@@ -38,6 +41,7 @@ public class AiProviderConfiguration {
     AiClients aiClients(AiProperties properties, ObjectMapper mapper) {
         AiProperties.OpenAi openAi = properties.openai();
         AiProperties.Anthropic anthropic = properties.anthropic();
+        AiProperties.Gemini gemini = properties.gemini();
         OpenAiClient openAiClient = openAi.hasKey()
                 ? new OpenAiClient(restClient(openAi.connectTimeout(), openAi.readTimeout()),
                 restClient(openAi.connectTimeout(), openAi.transcriptionTimeout()), openAi, mapper)
@@ -45,21 +49,26 @@ public class AiProviderConfiguration {
         AnthropicClient anthropicClient = anthropic.hasKey()
                 ? new AnthropicClient(restClient(anthropic.connectTimeout(), anthropic.readTimeout()), anthropic, mapper)
                 : null;
-        return new AiClients(openAiClient, anthropicClient);
+        GeminiClient geminiClient = gemini.hasKey()
+                ? new GeminiClient(restClient(gemini.connectTimeout(), gemini.readTimeout()),
+                restClient(gemini.connectTimeout(), gemini.transcriptionTimeout()), gemini, mapper)
+                : null;
+        return new AiClients(openAiClient, anthropicClient, geminiClient);
     }
 
     @Bean
     AiProvider aiProvider(AiProperties properties, AiClients clients) {
         String choice = normalize(properties.llmProvider());
         LlmClient llm = switch (choice) {
-            case "auto" -> clients.anthropic() != null ? clients.anthropic() : clients.openAi();
+            case "auto" -> first(clients.anthropic(), clients.openAi(), clients.gemini());
             case "anthropic" -> require(clients.anthropic(), "unmute.ai.llm-provider=anthropic", "ANTHROPIC_API_KEY");
             case "openai" -> require(clients.openAi(), "unmute.ai.llm-provider=openai", "OPENAI_API_KEY");
+            case "gemini" -> require(clients.gemini(), "unmute.ai.llm-provider=gemini", "GEMINI_API_KEY");
             case "mock" -> null;
-            default -> throw unknown("llm-provider", choice, "auto, anthropic, openai, mock");
+            default -> throw unknown("llm-provider", choice, "auto, anthropic, openai, gemini, mock");
         };
         if (llm == null) {
-            log.info("AI text model: offline mock (set ANTHROPIC_API_KEY or OPENAI_API_KEY to use a real model)");
+            log.info("AI text model: offline mock (set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY to use a real model)");
             return new MockAiProvider();
         }
         log.info("AI text model: {}", llm.describe());
@@ -68,31 +77,71 @@ public class AiProviderConfiguration {
 
     @Bean
     EmbeddingProvider embeddingProvider(AiProperties properties, AiClients clients) {
-        OpenAiClient openAi = openAiFor(normalize(properties.embeddingProvider()), "embedding-provider", clients);
-        EmbeddingProvider provider = openAi != null ? new OpenAiEmbeddingProvider(openAi) : new MockEmbeddingProvider();
+        String choice = normalize(properties.embeddingProvider());
+        EmbeddingProvider provider = switch (choice) {
+            case "auto" -> clients.openAi() != null
+                    ? new OpenAiEmbeddingProvider(clients.openAi())
+                    : clients.gemini() != null
+                            ? new GeminiEmbeddingProvider(clients.gemini())
+                            : new MockEmbeddingProvider();
+            case "openai" -> new OpenAiEmbeddingProvider(
+                    require(clients.openAi(), "unmute.ai.embedding-provider=openai", "OPENAI_API_KEY"));
+            case "gemini" -> new GeminiEmbeddingProvider(
+                    require(clients.gemini(), "unmute.ai.embedding-provider=gemini", "GEMINI_API_KEY"));
+            case "mock" -> new MockEmbeddingProvider();
+            default -> throw unknown("embedding-provider", choice, "auto, openai, gemini, mock");
+        };
         log.info("Embedding model: {}{}", provider.modelId(),
-                openAi == null ? " (set OPENAI_API_KEY for semantic embeddings)" : "");
+                isMock(provider) ? " (set OPENAI_API_KEY or GEMINI_API_KEY for semantic embeddings)" : "");
         return provider;
     }
 
     @Bean
     TranscriptionService transcriptionService(AiProperties properties, AiClients clients) {
-        OpenAiClient openAi = openAiFor(normalize(properties.transcriptionProvider()), "transcription-provider", clients);
-        if (openAi == null) {
-            log.info("Transcription: offline mock with canned transcripts (set OPENAI_API_KEY for real speech-to-text)");
-            return new MockTranscriptionProvider();
-        }
-        log.info("Transcription: openai/{}", openAi.properties().transcriptionModel());
-        return new OpenAiTranscriptionService(openAi);
+        String choice = normalize(properties.transcriptionProvider());
+        return switch (choice) {
+            case "auto" -> {
+                if (clients.openAi() != null) {
+                    log.info("Transcription: openai/{}", clients.openAi().properties().transcriptionModel());
+                    yield new OpenAiTranscriptionService(clients.openAi());
+                }
+                if (clients.gemini() != null) {
+                    log.info("Transcription: gemini/{}", clients.gemini().properties().transcriptionModel());
+                    yield new GeminiTranscriptionService(clients.gemini());
+                }
+                log.info("Transcription: offline mock with canned transcripts (set OPENAI_API_KEY or GEMINI_API_KEY for real speech-to-text)");
+                yield new MockTranscriptionProvider();
+            }
+            case "openai" -> {
+                OpenAiClient openAi = require(clients.openAi(), "unmute.ai.transcription-provider=openai", "OPENAI_API_KEY");
+                log.info("Transcription: openai/{}", openAi.properties().transcriptionModel());
+                yield new OpenAiTranscriptionService(openAi);
+            }
+            case "gemini" -> {
+                GeminiClient gemini = require(clients.gemini(), "unmute.ai.transcription-provider=gemini", "GEMINI_API_KEY");
+                log.info("Transcription: gemini/{}", gemini.properties().transcriptionModel());
+                yield new GeminiTranscriptionService(gemini);
+            }
+            case "mock" -> {
+                log.info("Transcription: offline mock with canned transcripts");
+                yield new MockTranscriptionProvider();
+            }
+            default -> throw unknown("transcription-provider", choice, "auto, openai, gemini, mock");
+        };
     }
 
-    private static OpenAiClient openAiFor(String choice, String property, AiClients clients) {
-        return switch (choice) {
-            case "auto" -> clients.openAi();
-            case "openai" -> require(clients.openAi(), "unmute.ai." + property + "=openai", "OPENAI_API_KEY");
-            case "mock" -> null;
-            default -> throw unknown(property, choice, "auto, openai, mock");
-        };
+    private static boolean isMock(EmbeddingProvider provider) {
+        return provider instanceof MockEmbeddingProvider;
+    }
+
+    @SafeVarargs
+    private static <T> T first(T... values) {
+        for (T value : values) {
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private static RestClient.Builder restClient(Duration connectTimeout, Duration readTimeout) {
@@ -121,6 +170,6 @@ public class AiProviderConfiguration {
     }
 
     /** Clients exist only for providers whose API key is configured. */
-    record AiClients(OpenAiClient openAi, AnthropicClient anthropic) {
+    record AiClients(OpenAiClient openAi, AnthropicClient anthropic, GeminiClient gemini) {
     }
 }
