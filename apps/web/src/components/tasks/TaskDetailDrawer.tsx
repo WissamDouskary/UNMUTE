@@ -1,15 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { FileText, Loader2, X } from 'lucide-react';
-import { apiClient, type Note, type Task } from '@unmute/api-client';
-
-const PRIORITY_TONE: Record<Task['priority'], string> = {
-  URGENT: 'text-red-300 bg-red-500/10 border-red-500/30',
-  HIGH: 'text-amber-300 bg-amber-500/10 border-amber-500/30',
-  MEDIUM: 'text-sky-300 bg-sky-500/10 border-sky-500/30',
-  LOW: 'text-zinc-300 bg-zinc-800 border-zinc-700',
-};
+import { apiClient, type Note, type Task, type TaskPriority } from '@unmute/api-client';
+import { PriorityPicker } from './PriorityPicker';
 
 function stripHtml(value: string | null | undefined): string {
   if (!value) return '';
@@ -40,6 +35,31 @@ export function TaskDetailDrawer({
   onClose: () => void;
 }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'MEDIUM');
+
+  useEffect(() => {
+    if (task) setPriority(task.priority);
+  }, [task]);
+
+  const priorityMutation = useMutation({
+    mutationFn: (next: TaskPriority) => apiClient.updateTask(task!.id, { priority: next }),
+    onMutate: async (next) => {
+      setPriority(next);
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+      queryClient.setQueriesData<Task[]>({ queryKey: ['tasks'] }, (old) =>
+        old?.map((item) => (item.id === task!.id ? { ...item, priority: next } : item))
+      );
+    },
+    onError: () => {
+      if (task) setPriority(task.priority);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
   const noteQuery = useQuery({
     queryKey: ['note', task?.noteId],
     queryFn: () => apiClient.getNote(task!.noteId!),
@@ -52,6 +72,12 @@ export function TaskDetailDrawer({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-sm animate-in fade-in-0 duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
         <Dialog.Content
           aria-describedby={undefined}
+          onInteractOutside={(event) => {
+            const target = event.target as HTMLElement | null;
+            if (target?.closest('[data-radix-popper-content-wrapper]')) {
+              event.preventDefault();
+            }
+          }}
           className="fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/60 outline-none animate-in slide-in-from-right duration-200 data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right"
         >
           {task && (
@@ -74,9 +100,11 @@ export function TaskDetailDrawer({
               <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
                 <div className="flex flex-wrap gap-2">
                   <Meta label="Status" value={task.isCompleted ? 'Completed' : 'Open'} />
-                  <span className={`inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-medium ${PRIORITY_TONE[task.priority]}`}>
-                    {task.priority.charAt(0) + task.priority.slice(1).toLowerCase()}
-                  </span>
+                  <PriorityPicker
+                    value={priority}
+                    size="sm"
+                    onChange={(next) => priorityMutation.mutate(next)}
+                  />
                   <Meta label="Due" value={formatDue(task.dueDate)} />
                 </div>
 

@@ -62,7 +62,7 @@ export function PriorityPicker({
           align="start"
           sideOffset={6}
           className={cn(
-            'z-50 min-w-[140px] rounded-xl bg-zinc-950/95 backdrop-blur-2xl border border-zinc-800 p-1 shadow-2xl shadow-black/80',
+            'z-[80] min-w-[140px] rounded-xl bg-zinc-950/95 backdrop-blur-2xl border border-zinc-800 p-1 shadow-2xl shadow-black/80',
             'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95'
           )}
         >
