@@ -66,6 +66,9 @@ public class EmbeddingService {
                     ? fullText.substring(0, 497) + "..."
                     : fullText;
 
+            // The upsert goes through JDBC, which bypasses Hibernate's write-behind cache: a note saved
+            // earlier in this transaction must be flushed or the note_embeddings FK insert fails.
+            noteRepository.flush();
             noteEmbeddingRepository.upsertEmbedding(
                     note.getId(),
                     note.getUser().getId(),
