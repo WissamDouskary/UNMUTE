@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLiveEventStream } from '../hooks/useLiveEvents';
@@ -17,6 +17,7 @@ import {
 import { CommandPalette, OPEN_PALETTE_EVENT } from './CommandPalette';
 import { AskChatProvider } from '../context/AskChatContext';
 import { AskCompanion } from './ask/AskCompanion';
+import { InstallAppButton } from './InstallAppButton';
 
 export const AppShell: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -25,6 +26,9 @@ export const AppShell: React.FC = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [offlineNotice, setOfflineNotice] = useState(
+    typeof navigator !== 'undefined' ? !navigator.onLine : false,
+  );
 
   const isFullBleed =
     location.pathname.startsWith('/notes') ||
@@ -41,6 +45,27 @@ export const AppShell: React.FC = () => {
     return 'Home';
   };
   const pageTitle = getPageTitle();
+
+  useEffect(() => {
+    const show = () => setOfflineNotice(true);
+    const hide = () => setOfflineNotice(false);
+    const onFailedWrite = () => {
+      setOfflineNotice(true);
+      if (navigator.onLine) {
+        window.setTimeout(() => {
+          if (navigator.onLine) setOfflineNotice(false);
+        }, 4000);
+      }
+    };
+    window.addEventListener('offline', show);
+    window.addEventListener('online', hide);
+    window.addEventListener('unmute:offline', onFailedWrite);
+    return () => {
+      window.removeEventListener('offline', show);
+      window.removeEventListener('online', hide);
+      window.removeEventListener('unmute:offline', onFailedWrite);
+    };
+  }, []);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -172,6 +197,7 @@ export const AppShell: React.FC = () => {
 
         {/* User Profile & Logout Bottom Bar */}
         <div className="p-3 border-t border-zinc-800">
+          <InstallAppButton />
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] font-medium text-zinc-300 flex items-center justify-center shrink-0">
@@ -258,6 +284,12 @@ export const AppShell: React.FC = () => {
             </div>
           </div>
         </header>
+
+        {offlineNotice && (
+          <div role="status" className="border-b border-zinc-800 bg-zinc-900 px-4 py-2 text-center text-xs text-zinc-200">
+            No connection
+          </div>
+        )}
 
         {/* Dynamic Nested View */}
         <main className={`flex-1 flex flex-col min-h-0 w-full ${isFullBleed ? 'overflow-hidden' : 'px-4 py-4 sm:px-6 lg:px-8'}`}>
