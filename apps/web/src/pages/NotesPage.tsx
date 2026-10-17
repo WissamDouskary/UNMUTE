@@ -1313,7 +1313,7 @@ export function NotesPage() {
         {/* Header with New Note Button & Multi-Select Toggle */}
         <div className="p-4 border-b border-zinc-800/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold text-zinc-100">
+            <h1 className="text-base font-bold tracking-tight text-zinc-100">
               {activeTab === 'archived' ? 'Archive' : activeTab === 'pinned' ? 'Pinned Notes' : 'All Notes'}
             </h1>
             <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono">
@@ -1331,7 +1331,7 @@ export function NotesPage() {
                   }
                 }}
                 title={isSelectionMode ? 'Cancel selection' : 'Select multiple notes'}
-                className={`p-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                className={`p-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer ${
                   isSelectionMode
                     ? 'bg-zinc-800 border-zinc-700 text-zinc-100'
                     : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850'
@@ -1342,7 +1342,7 @@ export function NotesPage() {
             )}
             <button
               onClick={handleCreateNote}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 text-zinc-950 hover:bg-white rounded-lg text-xs font-medium transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 text-zinc-950 hover:bg-white rounded-lg text-xs font-medium transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New Note</span>
@@ -1352,7 +1352,7 @@ export function NotesPage() {
 
         {/* Search Bar */}
         <div className="p-3 border-b border-zinc-800/60">
-          <div className="relative rounded-lg border border-zinc-800 bg-zinc-900/80 focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500 transition-all">
+          <div className="relative rounded-lg border border-zinc-800 ring-1 ring-inset ring-white/5 bg-zinc-900/80 focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500 transition-all">
             <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
@@ -1377,7 +1377,7 @@ export function NotesPage() {
         <div className="px-3 pt-2 pb-1.5 flex gap-1 border-b border-zinc-800/60">
           <button
             onClick={() => setActiveTab('all')}
-            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer ${
               activeTab === 'all'
                 ? 'bg-zinc-800 text-zinc-100'
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
@@ -1387,7 +1387,7 @@ export function NotesPage() {
           </button>
           <button
             onClick={() => setActiveTab('pinned')}
-            className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer ${
               activeTab === 'pinned'
                 ? 'bg-zinc-800 text-zinc-100'
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
@@ -1398,7 +1398,7 @@ export function NotesPage() {
           </button>
           <button
             onClick={() => setActiveTab('archived')}
-            className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer ${
               activeTab === 'archived'
                 ? 'bg-zinc-800 text-zinc-100'
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
@@ -1414,7 +1414,7 @@ export function NotesPage() {
           <div className="relative z-10 shrink-0 px-3 pt-2 pb-1 flex items-center gap-1.5 overflow-x-auto border-b border-zinc-800/60 bg-zinc-950 text-xs">
             <button
               onClick={() => setSelectedTag(null)}
-              className={`px-2.5 py-0.5 rounded-full flex-shrink-0 transition-all cursor-pointer ${
+              className={`px-2.5 py-0.5 rounded-full flex-shrink-0 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer ${
                 selectedTag === null
                   ? 'bg-zinc-800 text-zinc-100 border border-zinc-700'
                   : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
@@ -1426,7 +1426,7 @@ export function NotesPage() {
               <button
                 key={tag}
                 onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                className={`px-2.5 py-0.5 rounded-full flex-shrink-0 transition-all cursor-pointer ${
+                className={`px-2.5 py-0.5 rounded-full flex-shrink-0 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer ${
                   selectedTag === tag
                     ? 'bg-zinc-800 text-zinc-100 border border-zinc-700'
                     : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
@@ -1441,24 +1441,24 @@ export function NotesPage() {
         {/* Notes Scrollable Cards */}
         <div className={`flex-1 overflow-y-auto p-2.5 space-y-1.5 ${isSelectionMode ? 'pb-24' : ''}`}>
           {loading ? (
-            <div className="py-16 flex flex-col items-center justify-center text-zinc-500 text-xs gap-2">
-              <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+            <div className="py-16 flex flex-col items-center justify-center text-zinc-400 text-xs gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
               <span>Loading notes...</span>
             </div>
           ) : notes.length === 0 ? (
-            <div className="py-16 px-4 text-center">
+            <div className="py-16 px-4 text-center rounded-xl border border-zinc-800 ring-1 ring-inset ring-white/10 bg-gradient-to-b from-zinc-800/50 to-zinc-900/50">
               <div className="w-12 h-12 mx-auto rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-3">
                 <FileText className="w-6 h-6 text-zinc-600" />
               </div>
-              <h2 className="text-sm font-semibold text-zinc-300 mb-1">No notes found</h2>
-              <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
+              <h2 className="text-sm font-semibold tracking-tight text-zinc-300 mb-1">No notes found</h2>
+              <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
                 {searchQuery || selectedTag
                   ? 'Try clearing your search query or tag filter.'
                   : 'Start capturing knowledge with block-based editing.'}
               </p>
               <button
                 onClick={handleCreateNote}
-                className="px-3.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer"
               >
                 Create First Note
               </button>
@@ -1483,11 +1483,11 @@ export function NotesPage() {
                       }
                     }
                   }}
-                  className={`group relative p-3 rounded-xl cursor-pointer transition-all ${
+                  className={`group relative p-3 rounded-xl cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] ${
                     isCardChecked
-                      ? 'bg-zinc-900 border border-zinc-600'
+                      ? 'bg-gradient-to-b from-zinc-800/50 to-zinc-900/50 border border-zinc-600 ring-1 ring-inset ring-white/10'
                       : isSelected && !isSelectionMode
-                      ? 'bg-zinc-900 border border-zinc-700'
+                      ? 'bg-gradient-to-b from-zinc-800/50 to-zinc-900/50 border border-zinc-700 ring-1 ring-inset ring-white/10'
                       : 'hover:bg-zinc-800/50 border border-transparent'
                   }`}
                 >
@@ -1534,7 +1534,7 @@ export function NotesPage() {
                         {getExcerpt(note.content)}
                       </p>
 
-                      <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                      <div className="flex items-center justify-between text-[11px] text-zinc-400">
                         <span className="flex items-center gap-1 font-mono text-[10px]">
                           <Clock className="w-3 h-3 text-zinc-600" />
                           {formatTime(note.updatedAt || note.createdAt)}
@@ -1559,7 +1559,7 @@ export function NotesPage() {
                               );
                             })}
                             {note.tags.length > 2 && (
-                              <span className="text-[10px] text-zinc-500">
+                              <span className="text-[10px] text-zinc-400">
                                 +{note.tags.length - 2}
                               </span>
                             )}
@@ -1612,7 +1612,7 @@ export function NotesPage() {
 
         {/* WhatsApp / Linear-style Floating Batch Action Bar */}
         {selectedNoteIds.size > 0 && (
-          <div className="absolute bottom-3 left-3 right-3 z-30 bg-zinc-900 border border-zinc-800 rounded-xl p-2 flex items-center justify-between gap-2">
+          <div className="absolute bottom-3 left-3 right-3 z-30 bg-zinc-900 border border-zinc-800 ring-1 ring-inset ring-white/10 rounded-xl p-2 flex items-center justify-between gap-2">
             {/* Left: Select all checkbox + count */}
             <div className="flex items-center gap-2 min-w-0">
               <button
@@ -1657,7 +1657,7 @@ export function NotesPage() {
                 onClick={handleBatchArchive}
                 disabled={batchArchiveMutation.isPending}
                 title={activeTab === 'archived' ? 'Restore selected notes' : 'Archive selected notes'}
-                className="p-1.5 rounded-lg border border-zinc-800 hover:bg-zinc-800 text-zinc-300 hover:text-violet-400 transition-colors cursor-pointer disabled:opacity-50"
+                className="p-1.5 rounded-lg border border-zinc-800 hover:bg-zinc-800 text-zinc-300 hover:text-zinc-100 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer disabled:opacity-50"
               >
                 {activeTab === 'archived' ? (
                   <ArchiveRestore className="w-3.5 h-3.5" />
@@ -1711,7 +1711,7 @@ export function NotesPage() {
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span className="hidden sm:flex text-xs font-semibold text-zinc-400 items-center gap-1.5 min-w-0">
-                  <FileText className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+                  <FileText className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
                   <span className="truncate max-w-[200px] lg:max-w-[320px] text-zinc-200">
                     {title || 'Untitled Note'}
                   </span>
@@ -1726,7 +1726,7 @@ export function NotesPage() {
                     </span>
                   )}
                   {saveStatus === 'saving' && (
-                    <span className="flex items-center gap-1.5 text-violet-400 font-medium">
+                    <span className="flex items-center gap-1.5 text-zinc-400 font-medium">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       <span>Saving...</span>
                     </span>
@@ -1752,9 +1752,9 @@ export function NotesPage() {
                 <button
                   onClick={() => setShowLinkedTasksDrawer(true)}
                   title="View linked action items"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-zinc-300 hover:bg-zinc-800/50 hover:text-zinc-100 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-900 text-xs text-zinc-300 hover:bg-zinc-800/50 hover:text-zinc-100 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
                 >
-                  <CheckSquare className="w-3.5 h-3.5 text-violet-400" />
+                  <CheckSquare className="w-3.5 h-3.5 text-zinc-400" />
                   <span>
                     {linkedTasks.length}
                     <span className="hidden sm:inline"> {linkedTasks.length === 1 ? 'task' : 'tasks'}</span>
@@ -1767,19 +1767,19 @@ export function NotesPage() {
                     onClick={() => setShowAiMenu(!showAiMenu)}
                     disabled={isAiLoading}
                     aria-label="AI Assistant"
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-200 hover:bg-zinc-800/50 text-xs font-medium transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700 disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800/50 text-xs font-medium transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700 disabled:opacity-50"
                   >
                     {isAiLoading ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-400" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
                     ) : (
-                      <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                      <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
                     )}
                     <span className="hidden sm:inline">AI Assistant</span>
-                    <ChevronDown className="w-3 h-3 text-violet-400" />
+                    <ChevronDown className="w-3 h-3 text-zinc-400" />
                   </button>
 
                   {showAiMenu && (
-                    <div className="absolute right-0 mt-1.5 w-60 rounded-xl bg-zinc-900 border border-zinc-750 shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="absolute right-0 mt-1.5 w-60 rounded-xl bg-zinc-900 border border-zinc-800 ring-1 ring-inset ring-white/10 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
                       <button
                         onClick={() => {
                           setShowAiMenu(false);
@@ -1787,10 +1787,10 @@ export function NotesPage() {
                         }}
                         className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-xs text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
                       >
-                        <Sparkles className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                        <Sparkles className="w-4 h-4 text-zinc-400 flex-shrink-0" />
                         <div>
                           <p className="font-semibold">Summarize Note</p>
-                          <p className="text-[10px] text-zinc-500">Executive summary & key points</p>
+                          <p className="text-[10px] text-zinc-400">Executive summary & key points</p>
                         </div>
                       </button>
                       <button
@@ -1803,7 +1803,7 @@ export function NotesPage() {
                         <CheckSquare className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                         <div>
                           <p className="font-semibold">Extract Action Items</p>
-                          <p className="text-[10px] text-zinc-500">Detect & sync with Tasks</p>
+                          <p className="text-[10px] text-zinc-400">Detect & sync with Tasks</p>
                         </div>
                       </button>
                       <button
@@ -1816,7 +1816,7 @@ export function NotesPage() {
                         <TagIcon className="w-4 h-4 text-amber-400 flex-shrink-0" />
                         <div>
                           <p className="font-semibold">Auto-Tag Note</p>
-                          <p className="text-[10px] text-zinc-500">Suggest tags from the content</p>
+                          <p className="text-[10px] text-zinc-400">Suggest tags from the content</p>
                         </div>
                       </button>
                     </div>
@@ -1846,7 +1846,7 @@ export function NotesPage() {
                   aria-label={isArchived ? 'Restore from Archive' : 'Archive note'}
                   className={`p-2 rounded-lg border transition-colors cursor-pointer ${
                     isArchived
-                      ? 'bg-violet-500/10 border-violet-500/30 text-violet-400'
+                      ? 'bg-zinc-800 border-zinc-600 text-zinc-100'
                       : 'border-zinc-800 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
@@ -1953,7 +1953,7 @@ export function NotesPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-4 text-zinc-500 font-mono text-[11px]">
+                  <div className="flex items-center gap-4 text-zinc-400 font-mono text-[11px]">
                     <span>{stats.words} words</span>
                     <span>{stats.chars} chars</span>
                     <span>~{stats.readTimeMinutes} min read</span>
@@ -1988,17 +1988,17 @@ export function NotesPage() {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="w-16 h-16 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-center mb-4 shadow-xl shadow-purple-950/20">
-              <Sparkles className="w-8 h-8 text-violet-400" />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-b from-zinc-800/50 to-zinc-900/50 border border-zinc-800 ring-1 ring-inset ring-white/10 flex items-center justify-center mb-4">
+              <Sparkles className="w-8 h-8 text-zinc-400" />
             </div>
-            <h2 className="text-xl font-bold text-zinc-200 mb-2">Notes & Knowledge Engine</h2>
-            <p className="text-sm text-zinc-500 max-w-md mb-6 leading-relaxed">
+            <h2 className="text-xl font-bold tracking-tight text-zinc-200 mb-2">Notes & Knowledge Engine</h2>
+            <p className="text-sm text-zinc-400 max-w-md mb-6 leading-relaxed">
               Capture your ideas with block-based editing, tables, task lists, and bidirectional text
               support. Press <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono text-xs">/</kbd> anywhere to insert blocks or trigger AI.
             </p>
             <button
               onClick={handleCreateNote}
-              className="flex items-center gap-2 px-4 py-2.5 bg-zinc-100 text-zinc-950 hover:bg-white rounded-lg text-sm font-medium transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
+              className="flex items-center gap-2 px-4 py-2.5 bg-zinc-100 text-zinc-950 hover:bg-white rounded-lg text-sm font-medium transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
             >
               <Plus className="w-4 h-4" />
               <span>Create New Note</span>
@@ -2010,9 +2010,9 @@ export function NotesPage() {
       {/* Floating AI Notification Toast */}
       {aiNotification && (
         <div className="fixed bottom-20 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-200">
-          {aiNotification.type === 'success' && <Sparkles className="w-4 h-4 text-violet-400 flex-shrink-0" />}
+          {aiNotification.type === 'success' && <Sparkles className="w-4 h-4 text-zinc-400 flex-shrink-0" />}
           {aiNotification.type === 'error' && <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />}
-          {aiNotification.type === 'info' && <CheckSquare className="w-4 h-4 text-blue-400 flex-shrink-0" />}
+          {aiNotification.type === 'info' && <CheckSquare className="w-4 h-4 text-zinc-300 flex-shrink-0" />}
           <span className="font-medium">{aiNotification.message}</span>
           <button
             onClick={() => setAiNotification(null)}
@@ -2031,7 +2031,7 @@ export function NotesPage() {
             {/* Drawer Header */}
             <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
               <div className="flex items-center gap-2">
-                <CheckSquare className="w-5 h-5 text-violet-400" />
+                <CheckSquare className="w-5 h-5 text-zinc-400" />
                 <h3 className="text-base font-bold text-white">Linked Action Items</h3>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 font-mono">
                   {linkedTasks.length}
@@ -2066,12 +2066,12 @@ export function NotesPage() {
                 placeholder="Add actionable task for this note..."
                 value={newLinkedTaskTitle}
                 onChange={(e) => setNewLinkedTaskTitle(e.target.value)}
-                className="flex-1 px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-700"
+                className="flex-1 px-3 py-2 bg-zinc-950 border border-zinc-800 ring-1 ring-inset ring-white/5 rounded-lg text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-700"
               />
               <button
                 type="submit"
                 disabled={!newLinkedTaskTitle.trim() || createLinkedTaskMutation.isPending}
-                className="px-3 py-2 bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-950 rounded-lg text-xs font-medium cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+                className="px-3 py-2 bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-950 rounded-lg text-xs font-medium cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700"
               >
                 Add
               </button>
@@ -2080,7 +2080,7 @@ export function NotesPage() {
             {/* Linked Tasks List */}
             <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
               {linkedTasks.length === 0 ? (
-                <div className="text-center py-16 text-zinc-500 text-xs">
+                <div className="text-center py-16 text-zinc-400 text-xs">
                   <CheckSquare className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
                   <p>No tasks linked to this note yet.</p>
                   <p className="text-[11px] text-zinc-600 mt-1">
@@ -2117,7 +2117,7 @@ export function NotesPage() {
                       >
                         {task.title}
                       </p>
-                      <span className="text-[11px] text-zinc-500">
+                      <span className="text-[11px] text-zinc-400">
                         {task.priority}
                       </span>
                     </div>
@@ -2133,7 +2133,7 @@ export function NotesPage() {
                   setShowLinkedTasksDrawer(false);
                   navigate('/tasks');
                 }}
-                className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 font-semibold cursor-pointer"
+                className="flex items-center gap-1.5 text-xs text-zinc-300 hover:text-zinc-100 font-semibold cursor-pointer"
               >
                 <span>Open full Tasks dashboard</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />

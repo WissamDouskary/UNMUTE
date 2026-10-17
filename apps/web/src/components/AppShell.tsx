@@ -102,7 +102,7 @@ export const AppShell: React.FC = () => {
 
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100 transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+          className="p-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100 transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700"
           aria-label="Toggle menu"
         >
           {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -153,7 +153,7 @@ export const AppShell: React.FC = () => {
                   end={item.exact}
                   onClick={() => setMobileMenuOpen(false)}
                   className={({ isActive }) =>
-                    `flex items-center justify-between px-2.5 py-1.5 rounded-lg text-sm transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700 ${
+                    `flex items-center justify-between px-2.5 py-1.5 rounded-lg text-sm transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700 ${
                       isActive
                         ? 'bg-zinc-800 text-zinc-100'
                         : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50'
@@ -190,7 +190,7 @@ export const AppShell: React.FC = () => {
             <button
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700 cursor-pointer"
+              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700 cursor-pointer"
               title="Sign Out"
               aria-label="Sign Out"
             >
@@ -212,13 +212,13 @@ export const AppShell: React.FC = () => {
       <div className={`flex-1 flex flex-col min-w-0 ${isFullBleed ? 'min-h-0 overflow-hidden' : 'overflow-y-auto'}`}>
         {/* Top Header Bar */}
         <header className="hidden md:flex items-center justify-between h-12 px-6 border-b border-zinc-800 bg-zinc-950 sticky top-0 z-20 flex-shrink-0">
-          <h2 className="text-sm font-medium text-zinc-200">{pageTitle}</h2>
+          <h2 className="text-sm font-medium tracking-tight text-zinc-200">{pageTitle}</h2>
 
           <div className="flex items-center gap-4">
             <button
               type="button"
               onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
-              className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
+              className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-900 text-xs text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
             >
               <Search className="w-3.5 h-3.5" />
               <span>Search</span>
@@ -226,7 +226,7 @@ export const AppShell: React.FC = () => {
             </button>
             <button
               onClick={() => navigate('/ask')}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900 text-xs font-medium text-zinc-200 hover:bg-zinc-800/50 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-900 text-xs font-medium text-zinc-200 hover:bg-zinc-800/50 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
               title="Launch Ask UNMUTE RAG Assistant"
             >
               <Sparkles className="w-3.5 h-3.5 text-zinc-400" />

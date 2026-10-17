@@ -44,8 +44,8 @@ export function CustomSelect<T extends string = string>({
       <Select.Trigger
         aria-label={placeholder}
         className={cn(
-          'inline-flex items-center justify-between gap-2 border transition-all cursor-pointer select-none',
-          'bg-zinc-900/80 hover:bg-zinc-850 text-zinc-300 border-zinc-800 hover:border-zinc-700',
+          'inline-flex items-center justify-between gap-2 border transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer select-none',
+          'bg-zinc-900/80 hover:bg-zinc-850 text-zinc-300 border-zinc-800 ring-1 ring-inset ring-white/10 hover:border-zinc-700',
           'focus:outline-none focus:ring-1 focus:ring-zinc-700',
           sizeClasses,
           buttonClassName,
@@ -81,7 +81,7 @@ export function CustomSelect<T extends string = string>({
           sideOffset={6}
           align={align}
           className={cn(
-            'z-50 min-w-[160px] max-w-[260px] rounded-xl bg-zinc-900/95 backdrop-blur-2xl border border-zinc-800 p-1 shadow-2xl shadow-black/80',
+            'z-50 min-w-[160px] max-w-[260px] rounded-xl bg-zinc-900/95 backdrop-blur-2xl border border-zinc-800 ring-1 ring-inset ring-white/10 p-1 shadow-2xl shadow-black/80',
             'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95'
           )}
         >

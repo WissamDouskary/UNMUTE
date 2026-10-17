@@ -325,7 +325,7 @@ export const SourcesPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-800/60 pb-6">
           <div>
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+              <div className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 ring-1 ring-inset ring-white/10 text-zinc-300">
                 <Radio className="w-5 h-5" />
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-white">Capture Engine & Sources</h1>
@@ -367,11 +367,11 @@ export const SourcesPage: React.FC = () => {
         {/* ======================================================== */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* 1. Native Voice Recording Widget (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col justify-between p-6 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 shadow-xl relative overflow-hidden backdrop-blur-sm group">
+          <div className="lg:col-span-5 flex flex-col justify-between p-6 rounded-2xl bg-gradient-to-b from-zinc-800/50 to-zinc-900/50 border border-zinc-800/80 ring-1 ring-inset ring-white/10 relative overflow-hidden backdrop-blur-sm group">
             {/* Ambient Background Glow */}
             <div
               className={`absolute -top-24 -left-24 w-60 h-60 rounded-full blur-3xl transition-opacity duration-700 pointer-events-none ${
-                isRecording ? 'bg-rose-500/20 opacity-100' : 'bg-indigo-500/10 opacity-60'
+                isRecording ? 'bg-rose-500/20 opacity-100' : 'bg-violet-400/15 opacity-80'
               }`}
             />
 
@@ -408,10 +408,10 @@ export const SourcesPage: React.FC = () => {
                     onClick={isRecording ? stopRecording : startRecording}
                     disabled={isUploading}
                     aria-label={isRecording ? 'Stop recording' : 'Start recording'}
-                    className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl cursor-pointer ${
+                    className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer ${
                       isRecording
-                        ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/40 scale-105'
-                        : 'bg-gradient-to-tr from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white shadow-indigo-600/30 hover:scale-105'
+                        ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/40'
+                        : 'border border-violet-400/40 bg-violet-500/15 text-violet-200 shadow-[0_0_15px_rgba(167,139,250,0.45)] hover:bg-violet-500/25'
                     }`}
                     title={isRecording ? 'Click to Stop & Transcribe' : 'Click to Record Voice Note'}
                   >
@@ -478,7 +478,7 @@ export const SourcesPage: React.FC = () => {
               ) : (
                 <div className="flex items-center justify-between w-full text-xs text-zinc-400">
                   <span className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                    <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
                     Auto-creates structured note
                   </span>
                   <span className="font-mono text-[11px] text-zinc-400">MediaRecorder API</span>
@@ -500,18 +500,18 @@ export const SourcesPage: React.FC = () => {
               {...getRootProps()}
               className={`flex-1 flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer text-center relative overflow-hidden backdrop-blur-sm min-h-[280px] ${
                 isDragActive
-                  ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/10 scale-[1.01]'
+                  ? 'border-zinc-400 bg-zinc-800/50 ring-1 ring-inset ring-white/10'
                   : 'border-zinc-800/80 hover:border-zinc-700 bg-zinc-900/30 hover:bg-zinc-900/50'
               } ${isUploading ? 'opacity-60 pointer-events-none' : ''}`}
             >
               <input {...getInputProps()} />
 
               {/* Glowing hover state */}
-              <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
 
-              <div className="p-4 rounded-2xl bg-zinc-800/50 border border-zinc-700/50 text-indigo-400 mb-4 shadow-inner">
+              <div className="p-4 rounded-2xl bg-zinc-800/50 border border-zinc-700/50 text-zinc-300 mb-4">
                 {isUploading ? (
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+                  <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
                 ) : (
                   <UploadCloud className="w-8 h-8" />
                 )}
@@ -628,7 +628,7 @@ export const SourcesPage: React.FC = () => {
           {/* Sources List / Grid */}
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <Loader2 className="w-7 h-7 animate-spin text-indigo-400" />
+              <Loader2 className="w-7 h-7 animate-spin text-zinc-400" />
               <p className="text-xs text-zinc-400 font-medium">Loading sources inbox...</p>
             </div>
           ) : filteredSources.length === 0 ? (
@@ -662,9 +662,9 @@ export const SourcesPage: React.FC = () => {
                   <div
                     key={source.id}
                     onClick={() => setSelectedSource(source)}
-                    className={`flex flex-col justify-between p-4 rounded-xl border transition-all duration-150 cursor-pointer relative group ${
+                    className={`flex flex-col justify-between p-4 rounded-xl border ring-1 ring-inset ring-white/10 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer relative group ${
                       isSelected
-                        ? 'bg-zinc-900/90 border-indigo-500/50 shadow-lg shadow-indigo-500/5'
+                        ? 'bg-gradient-to-b from-zinc-800/50 to-zinc-900/50 border-zinc-500'
                         : 'bg-zinc-900/40 hover:bg-zinc-900/70 border-zinc-800/80 hover:border-zinc-700'
                     }`}
                   >
@@ -674,9 +674,9 @@ export const SourcesPage: React.FC = () => {
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="p-2 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/50 shrink-0">
                             {source.fileType.includes('audio') ? (
-                              <FileAudio className="w-4 h-4 text-indigo-400" />
+                              <FileAudio className="w-4 h-4 text-zinc-300" />
                             ) : (
-                              <FileText className="w-4 h-4 text-cyan-400" />
+                              <FileText className="w-4 h-4 text-zinc-400" />
                             )}
                           </div>
                           <div className="min-w-0">
@@ -725,7 +725,7 @@ export const SourcesPage: React.FC = () => {
 
                       {/* Transcript Preview Snippet */}
                       {source.transcript ? (
-                        <p className="text-xs text-zinc-400 line-clamp-3 leading-relaxed italic border-l-2 border-indigo-500/40 pl-2.5 my-2">
+                        <p className="text-xs text-zinc-400 line-clamp-3 leading-relaxed italic border-l-2 border-zinc-700 pl-2.5 my-2">
                           "{source.transcript}"
                         </p>
                       ) : isTranscribing ? (
@@ -749,7 +749,7 @@ export const SourcesPage: React.FC = () => {
                             e.stopPropagation();
                             handleViewNote(source.noteId!);
                           }}
-                          className="flex items-center gap-1 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors group/link cursor-pointer truncate max-w-[170px]"
+                          className="flex items-center gap-1 text-[11px] font-medium text-zinc-300 hover:text-zinc-100 transition-all duration-200 ease-out group/link cursor-pointer truncate max-w-[170px]"
                           title={`Open Note: ${source.noteTitle || 'Untitled Note'}`}
                         >
                           <FileText className="w-3 h-3 shrink-0" />
@@ -814,7 +814,7 @@ export const SourcesPage: React.FC = () => {
             {/* Drawer Header */}
             <div className="p-6 border-b border-zinc-800 flex items-start justify-between gap-4 bg-zinc-900/40">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 shrink-0">
+                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 ring-1 ring-inset ring-white/10 text-zinc-300 shrink-0">
                   <FileAudio className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
@@ -899,14 +899,14 @@ export const SourcesPage: React.FC = () => {
 
               {/* Linked Generated Note Card */}
               {selectedSource.noteId && (
-                <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/20 flex items-center justify-between gap-4">
+                <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 ring-1 ring-inset ring-white/10 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0">
+                    <div className="p-2 rounded-lg bg-zinc-800 text-zinc-300 shrink-0">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">
-                        Generated Knowledge Note
+                      <span className="text-[11px] font-medium text-zinc-400">
+                        Generated note
                       </span>
                       <h4 className="text-xs font-bold text-white truncate">
                         {selectedSource.noteTitle || 'Voice Note'}
@@ -916,7 +916,7 @@ export const SourcesPage: React.FC = () => {
 
                   <button
                     onClick={() => handleViewNote(selectedSource.noteId!)}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer shrink-0"
+                    className="px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer shrink-0"
                   >
                     <span>View Note</span>
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -928,7 +928,7 @@ export const SourcesPage: React.FC = () => {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                    <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
+                    <Volume2 className="w-3.5 h-3.5 text-zinc-400" />
                     AI Transcript
                   </span>
                   {selectedSource.transcript && (

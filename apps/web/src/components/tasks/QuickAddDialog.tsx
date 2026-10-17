@@ -53,11 +53,11 @@ export function QuickAddDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm animate-in fade-in-0 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
-        <Dialog.Content className="fixed left-1/2 top-[28%] -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xl bg-zinc-950 border border-zinc-800/80 rounded-xl shadow-[0_0_100px_40px_rgba(0,0,0,0.4)] p-5 outline-none animate-in fade-in-0 zoom-in-95 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
+        <Dialog.Content className="fixed left-1/2 top-[28%] -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xl bg-zinc-950 border border-zinc-800/80 ring-1 ring-inset ring-white/10 rounded-xl p-5 outline-none animate-in fade-in-0 zoom-in-95 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
           {/* Header Bar */}
           <div className="flex items-center justify-between pb-3 mb-2 border-b border-zinc-800/60">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400">
-              <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+              <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
               <span>Create Task</span>
             </div>
             <Dialog.Close asChild>
@@ -120,7 +120,7 @@ export function QuickAddDialog({
                 <button
                   type="submit"
                   disabled={!title.trim() || isPending}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-md shadow-violet-600/30 active:scale-95"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 hover:bg-white disabled:opacity-40 text-zinc-950 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-200 ease-out active:scale-[0.98]"
                 >
                   {isPending ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

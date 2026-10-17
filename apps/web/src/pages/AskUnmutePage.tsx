@@ -65,7 +65,7 @@ export const AskUnmutePage: React.FC = () => {
           <button
             type="button"
             onClick={beginNewChat}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-zinc-600 cursor-pointer"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-zinc-600 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             New chat
@@ -120,7 +120,7 @@ export const AskUnmutePage: React.FC = () => {
               onClick={() => resume(session.id)}
               className={`shrink-0 max-w-[10rem] truncate rounded-full border px-3 py-1 text-[11px] cursor-pointer ${
                 session.id === chat.activeSessionId
-                  ? 'border-violet-500/50 text-violet-200'
+                  ? 'border-zinc-600 text-zinc-100'
                   : 'border-zinc-800 text-zinc-400'
               }`}
             >
@@ -131,14 +131,14 @@ export const AskUnmutePage: React.FC = () => {
 
         <header className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-zinc-800/80 bg-zinc-950/60 backdrop-blur-md sticky top-0 z-10 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-purple-500 shadow-lg shadow-violet-500/20">
-              <Sparkles className="h-5 w-5 text-white" />
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-900">
+              <Sparkles className="h-5 w-5 text-zinc-300" />
               <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-400 border-2 border-[#09090b] animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-bold tracking-tight text-white">Ask UNMUTE</h1>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400">
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400">
                   RAG 2026
                 </span>
               </div>
@@ -149,14 +149,14 @@ export const AskUnmutePage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center p-1 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-medium">
+            <div className="flex items-center p-1 rounded-xl bg-zinc-900 border border-zinc-800 ring-1 ring-inset ring-white/10 text-xs font-medium">
               <button
                 type="button"
                 onClick={() => setActiveTab('chat')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer ${
                   activeTab === 'chat'
-                    ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30 font-semibold'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'border border-violet-400/40 bg-violet-500/15 text-violet-200 shadow-[0_0_15px_rgba(167,139,250,0.45)] font-semibold'
+                    : 'border border-transparent text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
@@ -165,10 +165,10 @@ export const AskUnmutePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('search')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer ${
                   activeTab === 'search'
-                    ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30 font-semibold'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'border border-violet-400/40 bg-violet-500/15 text-violet-200 shadow-[0_0_15px_rgba(167,139,250,0.45)] font-semibold'
+                    : 'border border-transparent text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 <Search className="w-3.5 h-3.5" />
@@ -178,7 +178,7 @@ export const AskUnmutePage: React.FC = () => {
             <button
               type="button"
               onClick={beginNewChat}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 border border-zinc-800 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 border border-zinc-800 ring-1 ring-inset ring-white/10 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer"
               title="Start a new chat"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -202,7 +202,7 @@ export const AskUnmutePage: React.FC = () => {
           <div className="px-6 py-2">
             <div className="max-w-4xl mx-auto">
               <div className="text-xs font-semibold text-zinc-400 mb-2 flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
                 <span>Suggested Explorations</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -216,9 +216,9 @@ export const AskUnmutePage: React.FC = () => {
                         chat.setInput(item.query);
                         textareaRef.current?.focus();
                       }}
-                      className="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800/80 hover:border-violet-500/40 text-left transition-all group cursor-pointer"
+                      className="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800/80 ring-1 ring-inset ring-white/10 text-left transition-all duration-200 ease-out active:scale-[0.98] group cursor-pointer"
                     >
-                      <div className="p-2 rounded-lg bg-zinc-800 group-hover:bg-violet-950 text-zinc-400 group-hover:text-violet-300 shrink-0 transition-colors">
+                      <div className="p-2 rounded-lg bg-zinc-800 text-zinc-400 shrink-0">
                         <Icon className="w-4 h-4" />
                       </div>
                       <div>
@@ -241,7 +241,7 @@ export const AskUnmutePage: React.FC = () => {
               void chat.send(activeTab === 'chat' ? 'rag' : 'semantic');
             }}
           >
-            <div className="flex items-end gap-2 p-2 rounded-2xl bg-zinc-900 border border-zinc-700/80 focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500 transition-all shadow-lg">
+            <div className="flex items-end gap-2 p-2 rounded-2xl bg-zinc-900 border border-zinc-700/80 ring-1 ring-inset ring-white/5 focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500 transition-all">
               <textarea
                 ref={textareaRef}
                 rows={2}
@@ -263,13 +263,13 @@ export const AskUnmutePage: React.FC = () => {
               <button
                 type="submit"
                 disabled={!chat.input.trim() || pending}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-violet-600/30 transition-all cursor-pointer"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-400/40 bg-violet-500/15 text-violet-200 shadow-[0_0_15px_rgba(167,139,250,0.45)] hover:bg-violet-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer"
                 title="Send message"
               >
                 <Send className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex items-center justify-between px-2 pt-2 text-[11px] text-zinc-500">
+            <div className="flex items-center justify-between px-2 pt-2 text-[11px] text-zinc-400">
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 <span>pgvector cosine similarity • Grounded RAG</span>

@@ -87,7 +87,7 @@ export function TaskDetailDrawer({
                   <Dialog.Title dir="auto" className="text-base font-semibold tracking-tight text-zinc-100 text-start">
                     {task.title}
                   </Dialog.Title>
-                  <p className="mt-1 text-xs text-zinc-500">Task</p>
+                  <p className="mt-1 text-xs text-zinc-400">Task</p>
                 </div>
                 <Dialog.Close
                   aria-label="Close task details"
@@ -109,18 +109,18 @@ export function TaskDetailDrawer({
                 </div>
 
                 <section>
-                  <h3 className="text-xs text-zinc-500">Description</h3>
+                  <h3 className="text-xs text-zinc-400">Description</h3>
                   <p dir="auto" className="mt-2 text-sm leading-relaxed text-zinc-300 text-start whitespace-pre-wrap">
                     {task.description?.trim() || 'No description.'}
                   </p>
                 </section>
 
-                <section className="rounded-lg border border-zinc-800 bg-zinc-900 p-3.5">
-                  <h3 className="text-xs text-zinc-500">From a note</h3>
+                <section className="rounded-lg border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-900 p-3.5">
+                  <h3 className="text-xs text-zinc-400">From a note</h3>
                   {!task.noteId ? (
                     <p className="mt-2 text-sm text-zinc-400">This task was created directly, without a source note.</p>
                   ) : noteQuery.isLoading ? (
-                    <p className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
+                    <p className="mt-3 flex items-center gap-2 text-xs text-zinc-400">
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       Loading source
                     </p>
@@ -137,7 +137,7 @@ export function TaskDetailDrawer({
                           navigate(`/notes?noteId=${encodeURIComponent(task.noteId!)}`);
                           onClose();
                         }}
-                        className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800/50 cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+                        className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-md border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800/50 cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700"
                         title={`Open ${noteQuery.data?.title || task.noteTitle || 'note'}`}
                       >
                         <FileText className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
@@ -159,8 +159,8 @@ export function TaskDetailDrawer({
 
 function Meta({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px]">
-      <span className="text-zinc-500">{label}</span>
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-900 px-2 py-1 text-[11px]">
+      <span className="text-zinc-400">{label}</span>
       <span className="text-zinc-200">{value}</span>
     </span>
   );

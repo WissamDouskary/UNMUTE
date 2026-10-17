@@ -30,7 +30,7 @@ export function AskCompanion() {
       <Dialog.Trigger asChild>
         <button
           type="button"
-          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-950 transition-colors duration-200 hover:bg-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700 sm:bottom-6 sm:right-6"
+          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-950 transition-all duration-200 ease-out active:scale-[0.98] hover:bg-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700 sm:bottom-6 sm:right-6"
           title="Ask UNMUTE AI Assistant"
           aria-label="Ask UNMUTE AI Assistant"
         >
@@ -42,7 +42,7 @@ export function AskCompanion() {
         <Dialog.Overlay className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-sm animate-in fade-in-0 duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed bottom-3 right-3 z-50 flex h-[min(720px,calc(100dvh-1.5rem))] w-[min(400px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 outline-none sm:bottom-5 sm:right-5"
+          className="fixed bottom-3 right-3 z-50 flex h-[min(720px,calc(100dvh-1.5rem))] w-[min(400px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-950 outline-none sm:bottom-5 sm:right-5"
         >
           <div className="flex items-center gap-2 border-b border-zinc-800 px-3.5 py-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900">
@@ -50,7 +50,7 @@ export function AskCompanion() {
             </div>
             <div className="min-w-0 flex-1">
               <Dialog.Title className="text-sm font-medium tracking-tight text-zinc-100">Ask UNMUTE</Dialog.Title>
-              <p className="text-xs text-zinc-500">Search your notes</p>
+              <p className="text-xs text-zinc-400">Search your notes</p>
             </div>
             <button
               type="button"
@@ -127,7 +127,7 @@ export function AskCompanion() {
               void chat.send('rag');
             }}
           >
-            <div className="flex items-end gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 p-1.5 focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500">
+            <div className="flex items-end gap-2 rounded-2xl border border-zinc-800 ring-1 ring-inset ring-white/5 bg-zinc-900 p-1.5 focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500">
               <textarea
                 rows={2}
                 value={chat.input}
@@ -145,7 +145,7 @@ export function AskCompanion() {
                 type="submit"
                 disabled={!chat.input.trim() || pending}
                 aria-label="Send message"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-950 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-violet-400/40 bg-violet-500/15 text-violet-200 shadow-[0_0_15px_rgba(167,139,250,0.45)] hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700"
               >
                 <Send className="h-4 w-4" />
               </button>

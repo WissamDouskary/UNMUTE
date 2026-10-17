@@ -65,7 +65,7 @@ function renderInlineFormatting(text: string): React.ReactNode[] {
       parts.push(
         <code
           key={`code-${keyIdx++}`}
-          className="px-1.5 py-0.5 mx-0.5 rounded-md bg-zinc-800/80 text-violet-300 font-mono text-[0.875em] border border-zinc-700/50"
+          className="px-1.5 py-0.5 mx-0.5 rounded-md bg-zinc-800/80 text-zinc-200 font-mono text-[0.875em] border border-zinc-700/50"
         >
           {codeMatch[1]}
         </code>
@@ -119,7 +119,7 @@ function renderInlineFormatting(text: string): React.ReactNode[] {
           href={linkMatch[2]}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-violet-400 hover:text-violet-300 underline underline-offset-4 decoration-violet-500/40 hover:decoration-violet-400 transition-colors"
+          className="text-zinc-200 hover:text-zinc-100 underline underline-offset-4 decoration-zinc-500 hover:decoration-zinc-300 transition-colors"
         >
           {linkMatch[1]}
         </a>
@@ -247,7 +247,7 @@ export function MarkdownRenderer({ content, onToggleTask }: MarkdownRendererProp
       elements.push(
         <blockquote
           key={`quote-${i}`}
-          className="my-3 pl-4 border-l-4 border-violet-500/80 bg-violet-500/5 py-1 text-zinc-300 italic rounded-r-md"
+          className="my-3 pl-4 border-l-4 border-zinc-600 bg-zinc-800/40 py-1 text-zinc-300 italic rounded-r-md"
         >
           {renderInlineFormatting(line.slice(2))}
         </blockquote>
@@ -270,7 +270,7 @@ export function MarkdownRenderer({ content, onToggleTask }: MarkdownRendererProp
             type="checkbox"
             checked={isChecked}
             onChange={(e) => onToggleTask?.(currentTaskIndex, e.target.checked)}
-            className="mt-1 w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-violet-600 focus:ring-violet-500/20 focus:ring-offset-0 cursor-pointer accent-violet-600 transition"
+            className="mt-1 w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-zinc-100 focus:ring-zinc-500/20 focus:ring-offset-0 cursor-pointer accent-zinc-200 transition"
           />
           <span
             className={`text-sm leading-relaxed ${
@@ -289,7 +289,7 @@ export function MarkdownRenderer({ content, onToggleTask }: MarkdownRendererProp
     if (bulletMatch && bulletMatch[2] !== undefined) {
       elements.push(
         <div key={`bullet-${i}`} className="flex items-start gap-2.5 my-1 text-zinc-200">
-          <span className="text-violet-400 font-bold leading-relaxed select-none">•</span>
+          <span className="text-zinc-400 font-bold leading-relaxed select-none">•</span>
           <span className="text-sm leading-relaxed text-zinc-300">
             {renderInlineFormatting(bulletMatch[2])}
           </span>

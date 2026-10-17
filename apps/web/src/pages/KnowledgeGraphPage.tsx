@@ -508,7 +508,7 @@ export const KnowledgeGraphPage: React.FC = () => {
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-3 p-3 sm:p-4">
         <div className="pointer-events-auto flex w-full flex-col gap-2 sm:w-auto">
           <div className="flex items-center gap-2">
-            <Waypoints className="h-4 w-4 text-violet-400" />
+            <Waypoints className="h-4 w-4 text-zinc-300" />
             <h1 className="text-sm font-semibold tracking-tight text-zinc-100">Knowledge Graph</h1>
             <span className="font-mono text-[11px] text-zinc-500">
               {totalNodes} nodes · {graphData.links.length} links

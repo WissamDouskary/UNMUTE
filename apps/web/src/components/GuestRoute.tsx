@@ -9,7 +9,7 @@ export const GuestRoute: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[var(--color-surface-primary)] flex flex-col items-center justify-center p-4">
-        <div className="w-16 h-16 rounded-2xl bg-[var(--color-accent)] animate-pulse shadow-lg shadow-[var(--color-accent-muted)] flex items-center justify-center">
+        <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 ring-1 ring-inset ring-white/10 animate-pulse flex items-center justify-center">
           <svg
             width="32"
             height="32"

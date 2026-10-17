@@ -237,7 +237,7 @@ export function RichTextEditor({
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: 'text-violet-400 hover:text-violet-300 underline underline-offset-4 cursor-pointer',
+          class: 'text-zinc-200 hover:text-zinc-100 underline underline-offset-4 cursor-pointer',
         },
       }),
     ],
@@ -466,7 +466,7 @@ export function RichTextEditor({
           type="button"
           onClick={() => editor.chain().focus().toggleBold().run()}
           className={`p-1.5 rounded-full hover:bg-zinc-800 transition-colors cursor-pointer ${
-            editor.isActive('bold') ? 'bg-violet-600 text-white' : 'text-zinc-300'
+            editor.isActive('bold') ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-300'
           }`}
           title="Bold (Cmd+B)"
         >
@@ -477,7 +477,7 @@ export function RichTextEditor({
           type="button"
           onClick={() => editor.chain().focus().toggleItalic().run()}
           className={`p-1.5 rounded-full hover:bg-zinc-800 transition-colors cursor-pointer ${
-            editor.isActive('italic') ? 'bg-violet-600 text-white' : 'text-zinc-300'
+            editor.isActive('italic') ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-300'
           }`}
           title="Italic (Cmd+I)"
         >
@@ -488,7 +488,7 @@ export function RichTextEditor({
           type="button"
           onClick={() => editor.chain().focus().toggleStrike().run()}
           className={`p-1.5 rounded-full hover:bg-zinc-800 transition-colors cursor-pointer ${
-            editor.isActive('strike') ? 'bg-violet-600 text-white' : 'text-zinc-300'
+            editor.isActive('strike') ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-300'
           }`}
           title="Strikethrough"
         >
@@ -499,7 +499,7 @@ export function RichTextEditor({
           type="button"
           onClick={() => editor.chain().focus().toggleCode().run()}
           className={`p-1.5 rounded-full hover:bg-zinc-800 transition-colors cursor-pointer ${
-            editor.isActive('code') ? 'bg-violet-600 text-white' : 'text-zinc-300'
+            editor.isActive('code') ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-300'
           }`}
           title="Inline Code"
         >
@@ -517,7 +517,7 @@ export function RichTextEditor({
             setShowLinkInput(!showLinkInput);
           }}
           className={`p-1.5 rounded-full hover:bg-zinc-800 transition-colors cursor-pointer ${
-            editor.isActive('link') ? 'bg-violet-600 text-white' : 'text-zinc-300'
+            editor.isActive('link') ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-300'
           }`}
           title="Hyperlink"
         >
@@ -563,11 +563,11 @@ export function RichTextEditor({
               }
             }}
             autoFocus
-            className="w-64 px-3 py-1 bg-zinc-950 border border-zinc-700 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-violet-500"
+            className="w-64 px-3 py-1 bg-zinc-950 border border-zinc-700 rounded-lg text-xs text-zinc-100 focus:outline-none focus:border-zinc-500"
           />
           <button
             onClick={handleSetLink}
-            className="px-2.5 py-1 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-lg cursor-pointer"
+            className="px-2.5 py-1 bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold rounded-lg cursor-pointer transition-all duration-200 ease-out active:scale-[0.98]"
           >
             Apply
           </button>
@@ -629,8 +629,8 @@ export function RichTextEditor({
           ADVANCED TABLE TOOLS (Word-like parity, displayed when cursor in table)
       ========================================================================== */}
       {isInTable && (
-        <div className="my-3 px-3 py-1.5 rounded-xl bg-zinc-900/90 border border-violet-500/40 shadow-lg flex flex-wrap items-center gap-1.5 text-xs text-zinc-300">
-          <span className="text-[10px] uppercase font-mono font-bold text-violet-400 mr-2 flex items-center gap-1">
+        <div className="my-3 px-3 py-1.5 rounded-xl bg-zinc-900/90 border border-zinc-800 ring-1 ring-inset ring-white/10 flex flex-wrap items-center gap-1.5 text-xs text-zinc-300">
+          <span className="text-[10px] font-medium text-zinc-400 mr-2 flex items-center gap-1">
             <TableIcon className="w-3.5 h-3.5" />
             <span>Table Tools</span>
           </span>
@@ -699,7 +699,7 @@ export function RichTextEditor({
       {slashMenuOpen && slashCoords && (
         <div
           style={{ top: slashCoords.y, left: slashCoords.x }}
-          className="fixed z-50 w-72 max-h-80 overflow-y-auto rounded-2xl bg-zinc-900 border border-zinc-750 shadow-2xl p-1.5 text-zinc-200 animate-in fade-in zoom-in-95 duration-100"
+          className="fixed z-50 w-72 max-h-80 overflow-y-auto rounded-2xl bg-zinc-900 border border-zinc-800 ring-1 ring-inset ring-white/10 p-1.5 text-zinc-200 animate-in fade-in zoom-in-95 duration-100"
         >
           <div className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold border-b border-zinc-800 mb-1 flex items-center justify-between">
             <span>Basic Blocks</span>
@@ -723,13 +723,13 @@ export function RichTextEditor({
                     setSlashQuery('');
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
-                    isSelected ? 'bg-violet-600 text-white' : 'hover:bg-zinc-800/80 text-zinc-300'
+                    isSelected ? 'bg-zinc-100 text-zinc-950' : 'hover:bg-zinc-800/80 text-zinc-300'
                   }`}
                 >
                   <div
                     className={`p-1.5 rounded-lg border ${
                       isSelected
-                        ? 'bg-violet-500/20 border-violet-400 text-white'
+                        ? 'bg-zinc-200 border-zinc-300 text-zinc-950'
                         : 'bg-zinc-800/80 border-zinc-700/80 text-zinc-400'
                     }`}
                   >
@@ -739,7 +739,7 @@ export function RichTextEditor({
                     <p className="text-xs font-semibold leading-none mb-0.5">{cmd.title}</p>
                     <p
                       className={`text-[11px] truncate ${
-                        isSelected ? 'text-violet-200' : 'text-zinc-500'
+                        isSelected ? 'text-zinc-700' : 'text-zinc-400'
                       }`}
                     >
                       {cmd.description}
@@ -754,8 +754,8 @@ export function RichTextEditor({
 
       {/* AI Processing Floating Indicator */}
       {isAiLoading && (
-        <div className="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-violet-600/15 border border-violet-500/30 text-violet-300 text-xs shadow-lg shadow-purple-950/30 animate-pulse">
-          <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
+        <div className="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 ring-1 ring-inset ring-white/10 text-zinc-300 text-xs">
+          <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
           <span className="font-semibold">AI Assistant is analyzing note content...</span>
         </div>
       )}
@@ -765,7 +765,7 @@ export function RichTextEditor({
       ========================================================================== */}
       <EditorContent
         editor={editor}
-        className="prose prose-invert prose-lg max-w-none focus:outline-none leading-relaxed text-zinc-300 selection:bg-violet-600/30 min-h-[500px]"
+        className="prose prose-invert prose-lg max-w-none focus:outline-none leading-relaxed text-zinc-300 selection:bg-zinc-700/40 min-h-[500px]"
       />
     </div>
   );

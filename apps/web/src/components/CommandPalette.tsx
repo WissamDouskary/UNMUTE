@@ -138,7 +138,7 @@ export function CommandPalette() {
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="w-full max-w-xl rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/60 overflow-hidden focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500"
+        className="w-full max-w-xl rounded-2xl border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-950 shadow-2xl shadow-black/60 overflow-hidden focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-500"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-center gap-2 px-3 border-b border-zinc-800">
@@ -189,7 +189,7 @@ export function CommandPalette() {
                     onMouseEnter={() => setActive(index)}
                     onClick={item.run}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 text-start text-sm cursor-pointer ${
-                      index === active ? 'bg-violet-600/20 text-zinc-50' : 'text-zinc-300 hover:bg-zinc-900'
+                      index === active ? 'bg-zinc-800 text-zinc-50' : 'text-zinc-300 hover:bg-zinc-900'
                     }`}
                   >
                     <Icon className="w-4 h-4 shrink-0 text-zinc-400" />

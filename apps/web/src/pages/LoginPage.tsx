@@ -50,13 +50,13 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-[var(--color-surface-primary)] flex items-center justify-center p-4 sm:p-6 lg:p-8">
       {/* Background radial glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-[var(--color-accent)] opacity-[0.07] rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-white opacity-[0.04] rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-accent)] shadow-xl shadow-[var(--color-accent-muted)] mb-4">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 border border-zinc-800 ring-1 ring-inset ring-white/10 mb-4">
             <svg
               width="32"
               height="32"
@@ -113,7 +113,7 @@ export const LoginPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full pl-10 pr-4 py-2.5 bg-[var(--color-surface-tertiary)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[var(--color-surface-tertiary)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
                 />
               </div>
             </div>
@@ -130,7 +130,7 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleDemoFill}
-                  className="text-xs text-[var(--color-accent-hover)] hover:underline focus:outline-none"
+                  className="text-xs text-zinc-400 hover:text-zinc-200 hover:underline focus:outline-none"
                 >
                   Use Demo Account
                 </button>
@@ -147,7 +147,7 @@ export const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full pl-10 pr-11 py-2.5 bg-[var(--color-surface-tertiary)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-all"
+                  className="w-full pl-10 pr-11 py-2.5 bg-[var(--color-surface-tertiary)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
                 />
                 <button
                   type="button"
@@ -164,7 +164,7 @@ export const LoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full mt-2 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium text-sm text-white bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-md shadow-[var(--color-accent-muted)] cursor-pointer"
+              className="w-full mt-2 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium text-sm text-zinc-950 bg-zinc-100 hover:bg-white disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer"
             >
               {isSubmitting ? (
                 <>
@@ -186,7 +186,7 @@ export const LoginPage: React.FC = () => {
               Don't have an account?{' '}
               <Link
                 to="/register"
-                className="font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] hover:underline transition-colors"
+                className="font-semibold text-zinc-200 hover:text-white hover:underline transition-colors"
               >
                 Create one now
               </Link>

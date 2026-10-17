@@ -45,7 +45,7 @@ export function PriorityPicker({
               ? 'p-1 rounded-md hover:bg-zinc-800 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center'
               : cn(
                   'inline-flex items-center gap-1.5 font-medium cursor-pointer select-none',
-                  'bg-zinc-900/50 hover:bg-zinc-800 hover:text-zinc-200 text-zinc-300 border border-zinc-800/50 transition-colors',
+                  'bg-zinc-900/50 hover:bg-zinc-800 hover:text-zinc-200 text-zinc-300 border border-zinc-800/50 ring-1 ring-inset ring-white/10 transition-all duration-200 ease-out active:scale-[0.98]',
                   'focus:outline-none focus:ring-1 focus:ring-zinc-700',
                   sizeClasses
                 ),
@@ -62,7 +62,7 @@ export function PriorityPicker({
           align="start"
           sideOffset={6}
           className={cn(
-            'z-[80] min-w-[140px] rounded-lg bg-zinc-900 border border-zinc-800 p-1',
+            'z-[80] min-w-[140px] rounded-lg bg-zinc-900 border border-zinc-800 ring-1 ring-inset ring-white/10 p-1',
             'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95'
           )}
         >

@@ -81,12 +81,12 @@ export const DashboardPage: React.FC = () => {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-zinc-100">Home</h1>
-          <p className="mt-1 text-sm text-zinc-500">{name}</p>
+          <p className="mt-1 text-sm text-zinc-400">{name}</p>
         </div>
         <button
           type="button"
           onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
-          className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
+          className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-900 text-xs text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
         >
           <span>Search</span>
           <kbd className="font-mono text-[10px] text-zinc-500">Ctrl K</kbd>
@@ -162,9 +162,9 @@ function Stat({
   return (
     <Link
       to={href}
-      className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 hover:bg-zinc-800/50 transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+      className="flex items-center justify-between rounded-lg border border-zinc-800 ring-1 ring-inset ring-white/10 bg-zinc-900 px-3.5 py-2.5 hover:bg-zinc-800/50 transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700"
     >
-      <span className="text-xs text-zinc-500">{label}</span>
+      <span className="text-xs text-zinc-400">{label}</span>
       <span className="text-lg font-semibold tabular-nums text-zinc-100">
         {loading || value === undefined ? '—' : value}
       </span>
@@ -178,12 +178,12 @@ function dueRank(task: Task): number {
 }
 
 function dueLabel(task: Task): { text: string; tone: string } {
-  if (!task.dueDate) return { text: 'No date', tone: 'text-zinc-500' };
+  if (!task.dueDate) return { text: 'No date', tone: 'text-zinc-400' };
   if (isOverdue(task.dueDate) && !sameLocalDay(task.dueDate)) return { text: 'Overdue', tone: 'text-red-400' };
   if (sameLocalDay(task.dueDate)) return { text: 'Today', tone: 'text-amber-300' };
   return {
     text: parseDue(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-    tone: 'text-zinc-500',
+    tone: 'text-zinc-400',
   };
 }
 
@@ -199,13 +199,13 @@ function Widget({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-zinc-800 bg-zinc-900 px-3.5 py-2.5">
+    <section className="rounded-lg border border-zinc-800 ring-1 ring-inset ring-white/10 bg-gradient-to-b from-zinc-800/50 to-zinc-900/50 px-3.5 py-2.5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="flex items-center gap-2 text-sm font-medium text-zinc-200">
+        <h2 className="flex items-center gap-2 text-sm font-medium tracking-tight text-zinc-200">
           <Icon className="w-3.5 h-3.5" />
           {title}
         </h2>
-        <Link to={href} className="text-[11px] text-zinc-500 hover:text-zinc-200 inline-flex items-center gap-1">
+        <Link to={href} className="text-[11px] text-zinc-400 hover:text-zinc-200 inline-flex items-center gap-1">
           View all
           <ArrowUpRight className="w-3 h-3" />
         </Link>
@@ -220,19 +220,19 @@ function NoteRow({ note }: { note: Note }) {
     <li>
       <Link
         to={`/notes?noteId=${encodeURIComponent(note.id)}`}
-        className="flex items-center gap-3 py-2 hover:bg-zinc-800/50 -mx-2 px-2 rounded-lg transition-colors duration-200"
+        className="flex items-center gap-3 py-2 hover:bg-zinc-800/50 -mx-2 px-2 rounded-lg transition-all duration-200 ease-out active:scale-[0.98]"
       >
         <div className="min-w-0 flex-1">
           <p dir="auto" className="text-sm text-zinc-200 truncate text-start">
             {note.title || 'Untitled'}
           </p>
           {note.tags.length > 0 && (
-            <p className="text-[11px] text-zinc-500 truncate">
+            <p className="text-[11px] text-zinc-400 truncate">
               {note.tags.slice(0, 3).map((tag) => `#${tag}`).join('  ')}
             </p>
           )}
         </div>
-        <span className="text-[11px] text-zinc-500 shrink-0">{relativeTime(note.updatedAt)}</span>
+        <span className="text-[11px] text-zinc-400 shrink-0">{relativeTime(note.updatedAt)}</span>
       </Link>
     </li>
   );
@@ -245,7 +245,7 @@ function TaskRow({ task, onOpen }: { task: Task; onOpen: (task: Task) => void })
       <button
         type="button"
         onClick={() => onOpen(task)}
-        className="flex w-full items-center gap-3 py-2 hover:bg-zinc-800/50 -mx-2 px-2 rounded-lg cursor-pointer text-start transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+        className="flex w-full items-center gap-3 py-2 hover:bg-zinc-800/50 -mx-2 px-2 rounded-lg cursor-pointer text-start transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700"
       >
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${label.text === 'Overdue' ? 'bg-red-400' : label.text === 'Today' ? 'bg-amber-400' : 'bg-zinc-600'}`} />
         <p dir="auto" className="min-w-0 flex-1 text-sm text-zinc-200 truncate text-start">
@@ -261,7 +261,7 @@ function WorkflowRow({ source }: { source: Source }) {
   const live = source.status === 'PENDING' || source.status === 'TRANSCRIBING';
   return (
     <li>
-      <Link to="/sources" className="flex items-center gap-3 py-2 hover:bg-zinc-800/50 -mx-2 px-2 rounded-lg transition-colors duration-200">
+      <Link to="/sources" className="flex items-center gap-3 py-2 hover:bg-zinc-800/50 -mx-2 px-2 rounded-lg transition-all duration-200 ease-out active:scale-[0.98]">
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${live ? 'bg-zinc-300' : 'bg-red-400'}`} />
         <p dir="auto" className="min-w-0 flex-1 text-sm text-zinc-200 truncate text-start">
           {source.originalName}
@@ -277,8 +277,8 @@ function WorkflowRow({ source }: { source: Source }) {
 function Empty({ text, action, href }: { text: string; action: string; href: string }) {
   return (
     <div className="py-8 text-center">
-      <p className="text-sm text-zinc-500">{text}</p>
-      <Link to={href} className="inline-block mt-2 text-xs text-zinc-300 hover:text-zinc-100 transition-colors duration-200">
+      <p className="text-sm text-zinc-400">{text}</p>
+      <Link to={href} className="inline-block mt-2 text-xs text-zinc-300 hover:text-zinc-100 transition-all duration-200 ease-out active:scale-[0.98]">
         {action}
       </Link>
     </div>
@@ -287,7 +287,7 @@ function Empty({ text, action, href }: { text: string; action: string; href: str
 
 function Loading() {
   return (
-    <div className="flex items-center gap-2 py-8 text-xs text-zinc-500">
+    <div className="flex items-center gap-2 py-8 text-xs text-zinc-400">
       <Loader2 className="w-3.5 h-3.5 animate-spin" />
       Loading
     </div>
