@@ -84,6 +84,29 @@ function createClusterForce(strength: number) {
   return force;
 }
 
+const NODE_GLOW_PX = 15;
+
+/** Same geometry nodeCanvasObject fills, expanded by `extra` world units (glow, anti-alias). */
+function traceNode(ctx: CanvasRenderingContext2D, node: GNode, extra: number) {
+  const x = node.x ?? 0;
+  const y = node.y ?? 0;
+  const r = nodeRadius(node);
+  ctx.beginPath();
+  if (node.type === 'SOURCE') {
+    const reach = r + extra;
+    ctx.moveTo(x, y - reach);
+    ctx.lineTo(x + reach, y);
+    ctx.lineTo(x, y + reach);
+    ctx.lineTo(x - reach, y);
+    ctx.closePath();
+  } else if (node.type === 'TASK') {
+    const side = r * 1.55 + extra * 2;
+    ctx.rect(x - side / 2, y - side / 2, side, side);
+  } else {
+    ctx.arc(x, y, r + extra, 0, 2 * Math.PI);
+  }
+}
+
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const radius = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
@@ -360,19 +383,7 @@ export const KnowledgeGraphPage: React.FC = () => {
         ctx.shadowColor = color;
       }
 
-      ctx.beginPath();
-      if (node.type === 'SOURCE') {
-        ctx.moveTo(x, y - r);
-        ctx.lineTo(x + r, y);
-        ctx.lineTo(x, y + r);
-        ctx.lineTo(x - r, y);
-        ctx.closePath();
-      } else if (node.type === 'TASK') {
-        const s = r * 1.55;
-        ctx.rect(x - s / 2, y - s / 2, s, s);
-      } else {
-        ctx.arc(x, y, r, 0, 2 * Math.PI);
-      }
+      traceNode(ctx, node, 0);
 
       if (node.type === 'TAG') {
         ctx.fillStyle = BG_COLOR;
@@ -395,18 +406,19 @@ export const KnowledgeGraphPage: React.FC = () => {
         ctx.stroke();
       }
 
-      if (hovered || scale > 2) {
+      const showLabel = hoverId ? hovered || connected : scale > 2;
+      if (showLabel) {
         const text = truncate(node.type === 'TAG' ? `#${node.label}` : node.label, 36);
         const fontSize = 12 / scale;
         ctx.font = `500 ${fontSize}px Inter, ui-sans-serif, system-ui, sans-serif`;
-        const padX = 7 / scale;
-        const padY = 3.5 / scale;
+        const padX = 12 / scale;
+        const padY = 4 / scale;
         const textWidth = ctx.measureText(text).width;
         const pillW = textWidth + padX * 2;
         const pillH = fontSize + padY * 2;
         const pillX = x - pillW / 2;
-        const pillY = y + r + 5 / scale;
-        ctx.globalAlpha = dimmed ? 0.45 : 1;
+        const pillY = y + r + 6 / scale;
+        ctx.globalAlpha = 1;
         ctx.fillStyle = 'rgba(9, 9, 11, 0.8)';
         roundRect(ctx, pillX, pillY, pillW, pillH, pillH / 2);
         ctx.fill();
@@ -420,11 +432,15 @@ export const KnowledgeGraphPage: React.FC = () => {
     [hoverId, neighbors, searchMatches, selectedId],
   );
 
-  const paintPointerArea = useCallback((node: GNode, color: string, ctx: CanvasRenderingContext2D) => {
+  const paintPointerArea = useCallback((node: GNode, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    const glow = NODE_GLOW_PX / Math.max(globalScale, 0.25);
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
     ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(node.x ?? 0, node.y ?? 0, nodeRadius(node) + 8, 0, 2 * Math.PI);
+    traceNode(ctx, node, glow);
     ctx.fill();
+    ctx.restore();
   }, []);
 
   const totalNodes = graphData.nodes.length;
@@ -463,6 +479,7 @@ export const KnowledgeGraphPage: React.FC = () => {
           linkDirectionalParticleWidth={1.6}
           linkDirectionalParticleSpeed={0.005}
           linkDirectionalParticleColor={() => '#e4e4e7'}
+          linkHoverPrecision={1}
           warmupTicks={120}
           cooldownTicks={220}
           cooldownTime={4500}
@@ -671,7 +688,7 @@ const NodeInspector: React.FC<NodeInspectorProps> = ({ node, neighborIds, nodesB
     node.type === 'NOTE' ? 'Open note' : node.type === 'TASK' ? 'Open in context' : node.type === 'SOURCE' ? 'Open sources' : null;
 
   return (
-    <div className="absolute bottom-4 right-4 z-20 w-80 rounded-2xl border border-zinc-800 bg-zinc-950/80 shadow-2xl shadow-black/50 backdrop-blur">
+    <div className="absolute bottom-24 right-4 z-20 w-80 rounded-2xl border border-zinc-800 bg-zinc-950/80 shadow-2xl shadow-black/50 backdrop-blur">
       <div className="flex items-start gap-2.5 border-b border-zinc-800/50 p-3">
         <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: meta.color }} />
         <div className="min-w-0 flex-1">
