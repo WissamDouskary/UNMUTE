@@ -62,8 +62,8 @@ export function DatePickerPopover({
             className={cn(
               'inline-flex items-center gap-1.5 font-medium cursor-pointer select-none',
               'bg-zinc-900/50 hover:bg-zinc-800 hover:text-zinc-200 text-zinc-300 border border-zinc-800/50 transition-colors',
-              'focus:outline-none focus:ring-1 focus:ring-violet-500/50',
-              date && 'text-violet-300 border-violet-500/30 bg-violet-950/20',
+              'focus:outline-none focus:ring-1 focus:ring-zinc-700',
+              date && 'text-zinc-100 border-zinc-700 bg-zinc-900',
               sizeClasses,
               buttonClassName
             )}
@@ -71,7 +71,7 @@ export function DatePickerPopover({
             <CalendarIcon
               className={cn(
                 'w-3.5 h-3.5',
-                date ? 'text-violet-400' : 'text-zinc-500'
+                date ? 'text-zinc-300' : 'text-zinc-500'
               )}
             />
             <span className="truncate">{getDateLabel()}</span>
@@ -125,7 +125,7 @@ export function DatePickerPopover({
               onClick={() => handleQuickSelect(7)}
               className="flex-1 px-2 py-1 text-[11px] font-medium rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center gap-1 border border-zinc-800/60"
             >
-              <Clock className="w-3 h-3 text-violet-400" />
+              <Clock className="w-3 h-3 text-zinc-400" />
               <span>+1 Week</span>
             </button>
           </div>

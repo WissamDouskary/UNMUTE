@@ -78,7 +78,7 @@ export function TaskDetailDrawer({
               event.preventDefault();
             }
           }}
-          className="fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/60 outline-none animate-in slide-in-from-right duration-200 data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right"
+          className="fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l border-zinc-800 bg-zinc-950 outline-none focus:outline-none"
         >
           {task && (
             <>
@@ -87,7 +87,7 @@ export function TaskDetailDrawer({
                   <Dialog.Title dir="auto" className="text-base font-semibold tracking-tight text-zinc-100 text-start">
                     {task.title}
                   </Dialog.Title>
-                  <p className="mt-1 text-[11px] uppercase tracking-wider text-zinc-500">Task</p>
+                  <p className="mt-1 text-xs text-zinc-500">Task</p>
                 </div>
                 <Dialog.Close
                   aria-label="Close task details"
@@ -109,14 +109,14 @@ export function TaskDetailDrawer({
                 </div>
 
                 <section>
-                  <h3 className="text-[11px] uppercase tracking-wider text-zinc-500">Description</h3>
+                  <h3 className="text-xs text-zinc-500">Description</h3>
                   <p dir="auto" className="mt-2 text-sm leading-relaxed text-zinc-300 text-start whitespace-pre-wrap">
                     {task.description?.trim() || 'No description.'}
                   </p>
                 </section>
 
-                <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3.5">
-                  <h3 className="text-[11px] uppercase tracking-wider text-zinc-500">Extracted from</h3>
+                <section className="rounded-lg border border-zinc-800 bg-zinc-900 p-3.5">
+                  <h3 className="text-xs text-zinc-500">From a note</h3>
                   {!task.noteId ? (
                     <p className="mt-2 text-sm text-zinc-400">This task was created directly, without a source note.</p>
                   ) : noteQuery.isLoading ? (
@@ -137,10 +137,10 @@ export function TaskDetailDrawer({
                           navigate(`/notes?noteId=${encodeURIComponent(task.noteId!)}`);
                           onClose();
                         }}
-                        className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-md border border-violet-500/30 bg-violet-950/70 px-2 py-1 text-xs font-medium text-violet-200 hover:border-violet-400 hover:bg-violet-900/50 cursor-pointer"
+                        className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800/50 cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700"
                         title={`Open ${noteQuery.data?.title || task.noteTitle || 'note'}`}
                       >
-                        <FileText className="h-3.5 w-3.5 shrink-0 text-violet-400" />
+                        <FileText className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
                         <span dir="auto" className="truncate">
                           {noteQuery.data?.title || task.noteTitle || 'Note'}
                         </span>

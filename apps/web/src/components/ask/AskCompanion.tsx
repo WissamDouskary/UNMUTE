@@ -30,28 +30,27 @@ export function AskCompanion() {
       <Dialog.Trigger asChild>
         <button
           type="button"
-          className="fixed bottom-4 right-4 z-40 flex items-center gap-2.5 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 p-3 text-xs font-medium text-white shadow-xl shadow-violet-600/30 transition-all hover:from-violet-500 hover:to-indigo-500 hover:scale-105 active:scale-95 cursor-pointer sm:bottom-6 sm:right-6 sm:px-4 sm:py-2.5 group"
+          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-950 transition-colors duration-200 hover:bg-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700 sm:bottom-6 sm:right-6"
           title="Ask UNMUTE AI Assistant"
           aria-label="Ask UNMUTE AI Assistant"
         >
-          <Sparkles className="h-4 w-4 transition-transform group-hover:rotate-12" />
-          <span className="hidden font-semibold sm:inline">Ask UNMUTE</span>
-          <span className="hidden rounded-full bg-white/20 px-1.5 py-0.5 font-mono text-[10px] sm:inline">RAG</span>
+          <Sparkles className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Ask UNMUTE</span>
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-sm animate-in fade-in-0 duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed bottom-3 right-3 z-50 flex h-[min(720px,calc(100dvh-1.5rem))] w-[min(400px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[28px] border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/60 outline-none animate-in slide-in-from-bottom-4 fade-in duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-4 sm:bottom-5 sm:right-5"
+          className="fixed bottom-3 right-3 z-50 flex h-[min(720px,calc(100dvh-1.5rem))] w-[min(400px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 outline-none sm:bottom-5 sm:right-5"
         >
           <div className="flex items-center gap-2 border-b border-zinc-800 px-3.5 py-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600">
-              <Sparkles className="h-4 w-4 text-white" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900">
+              <Sparkles className="h-4 w-4 text-zinc-300" />
             </div>
             <div className="min-w-0 flex-1">
-              <Dialog.Title className="text-sm font-semibold tracking-tight text-zinc-100">Ask UNMUTE</Dialog.Title>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Companion</p>
+              <Dialog.Title className="text-sm font-medium tracking-tight text-zinc-100">Ask UNMUTE</Dialog.Title>
+              <p className="text-xs text-zinc-500">Search your notes</p>
             </div>
             <button
               type="button"
@@ -146,7 +145,7 @@ export function AskCompanion() {
                 type="submit"
                 disabled={!chat.input.trim() || pending}
                 aria-label="Send message"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-950 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700"
               >
                 <Send className="h-4 w-4" />
               </button>

@@ -46,7 +46,7 @@ export function PriorityPicker({
               : cn(
                   'inline-flex items-center gap-1.5 font-medium cursor-pointer select-none',
                   'bg-zinc-900/50 hover:bg-zinc-800 hover:text-zinc-200 text-zinc-300 border border-zinc-800/50 transition-colors',
-                  'focus:outline-none focus:ring-1 focus:ring-violet-500/50',
+                  'focus:outline-none focus:ring-1 focus:ring-zinc-700',
                   sizeClasses
                 ),
             className
@@ -62,7 +62,7 @@ export function PriorityPicker({
           align="start"
           sideOffset={6}
           className={cn(
-            'z-[80] min-w-[140px] rounded-xl bg-zinc-950/95 backdrop-blur-2xl border border-zinc-800 p-1 shadow-2xl shadow-black/80',
+            'z-[80] min-w-[140px] rounded-lg bg-zinc-900 border border-zinc-800 p-1',
             'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95'
           )}
         >
@@ -79,7 +79,7 @@ export function PriorityPicker({
                 className={cn(
                   'w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium select-none transition-colors cursor-pointer',
                   isSelected
-                    ? 'bg-violet-600/15 text-violet-300 font-semibold'
+                    ? 'bg-zinc-800 text-zinc-100'
                     : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
                 )}
               >
@@ -88,7 +88,7 @@ export function PriorityPicker({
                   <span>{p.label}</span>
                 </div>
                 {isSelected && (
-                  <Check className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+                  <Check className="w-3.5 h-3.5 text-zinc-300 flex-shrink-0" />
                 )}
               </button>
             );

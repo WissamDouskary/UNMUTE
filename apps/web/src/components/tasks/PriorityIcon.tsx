@@ -39,7 +39,7 @@ export function PriorityIcon({ priority, className, showLabel = false }: Priorit
 
     case 'MEDIUM':
       label = 'Medium';
-      colorClass = 'text-blue-400';
+      colorClass = 'text-zinc-300';
       icon = (
         <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
           <rect x="2" y="10" width="2.5" height="4" rx="0.5" />

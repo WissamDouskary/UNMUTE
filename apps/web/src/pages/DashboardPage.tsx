@@ -86,7 +86,7 @@ export const DashboardPage: React.FC = () => {
         <button
           type="button"
           onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
-          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900/60 text-xs text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 cursor-pointer"
+          className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900 text-xs text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
         >
           <span>Search</span>
           <kbd className="font-mono text-[10px] text-zinc-500">Ctrl K</kbd>
@@ -162,9 +162,9 @@ function Stat({
   return (
     <Link
       to={href}
-      className="flex items-center justify-between rounded-xl border border-zinc-800/80 bg-zinc-900/40 px-4 py-3 hover:border-zinc-700 transition-colors"
+      className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 hover:bg-zinc-800/50 transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700"
     >
-      <span className="text-[11px] uppercase tracking-wider text-zinc-500">{label}</span>
+      <span className="text-xs text-zinc-500">{label}</span>
       <span className="text-lg font-semibold tabular-nums text-zinc-100">
         {loading || value === undefined ? '—' : value}
       </span>
@@ -199,9 +199,9 @@ function Widget({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
+    <section className="rounded-lg border border-zinc-800 bg-zinc-900 px-3.5 py-2.5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+        <h2 className="flex items-center gap-2 text-sm font-medium text-zinc-200">
           <Icon className="w-3.5 h-3.5" />
           {title}
         </h2>
@@ -220,7 +220,7 @@ function NoteRow({ note }: { note: Note }) {
     <li>
       <Link
         to={`/notes?noteId=${encodeURIComponent(note.id)}`}
-        className="flex items-center gap-3 py-2.5 hover:bg-zinc-900/50 -mx-2 px-2 rounded-lg"
+        className="flex items-center gap-3 py-2 hover:bg-zinc-800/50 -mx-2 px-2 rounded-lg transition-colors duration-200"
       >
         <div className="min-w-0 flex-1">
           <p dir="auto" className="text-sm text-zinc-200 truncate text-start">
@@ -245,7 +245,7 @@ function TaskRow({ task, onOpen }: { task: Task; onOpen: (task: Task) => void })
       <button
         type="button"
         onClick={() => onOpen(task)}
-        className="flex w-full items-center gap-3 py-2.5 hover:bg-zinc-900/50 -mx-2 px-2 rounded-lg cursor-pointer text-start"
+        className="flex w-full items-center gap-3 py-2 hover:bg-zinc-800/50 -mx-2 px-2 rounded-lg cursor-pointer text-start transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-zinc-700"
       >
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${label.text === 'Overdue' ? 'bg-red-400' : label.text === 'Today' ? 'bg-amber-400' : 'bg-zinc-600'}`} />
         <p dir="auto" className="min-w-0 flex-1 text-sm text-zinc-200 truncate text-start">
@@ -261,12 +261,12 @@ function WorkflowRow({ source }: { source: Source }) {
   const live = source.status === 'PENDING' || source.status === 'TRANSCRIBING';
   return (
     <li>
-      <Link to="/sources" className="flex items-center gap-3 py-2.5 hover:bg-zinc-900/50 -mx-2 px-2 rounded-lg">
-        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${live ? 'bg-violet-400 animate-pulse' : 'bg-red-400'}`} />
+      <Link to="/sources" className="flex items-center gap-3 py-2 hover:bg-zinc-800/50 -mx-2 px-2 rounded-lg transition-colors duration-200">
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${live ? 'bg-zinc-300' : 'bg-red-400'}`} />
         <p dir="auto" className="min-w-0 flex-1 text-sm text-zinc-200 truncate text-start">
           {source.originalName}
         </p>
-        <span className={`text-[11px] shrink-0 ${live ? 'text-violet-300' : 'text-red-400'}`}>
+        <span className={`text-[11px] shrink-0 ${live ? 'text-zinc-400' : 'text-red-400'}`}>
           {live ? 'Running' : 'Failed'}
         </span>
       </Link>
@@ -278,7 +278,7 @@ function Empty({ text, action, href }: { text: string; action: string; href: str
   return (
     <div className="py-8 text-center">
       <p className="text-sm text-zinc-500">{text}</p>
-      <Link to={href} className="inline-block mt-2 text-xs text-violet-300 hover:text-violet-200">
+      <Link to={href} className="inline-block mt-2 text-xs text-zinc-300 hover:text-zinc-100 transition-colors duration-200">
         {action}
       </Link>
     </div>

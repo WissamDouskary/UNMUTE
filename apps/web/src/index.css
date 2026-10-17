@@ -112,7 +112,7 @@ body {
 }
 
 :focus-visible:not(input):not(textarea):not(select):not([contenteditable='true']) {
-  outline: 2px solid var(--color-accent);
+  outline: 1px solid #3f3f46;
   outline-offset: 2px;
 }
 
@@ -440,14 +440,14 @@ textarea:focus-visible {
    React Day Picker Dark Theme Overrides
    ============================================================ */
 .rdp-root {
-  --rdp-accent-color: #8b5cf6;
+  --rdp-accent-color: #e4e4e7;
   --rdp-accent-background-color: #27272a;
   --rdp-day-height: 34px;
   --rdp-day-width: 34px;
   --rdp-day_button-height: 32px;
   --rdp-day_button-width: 32px;
   --rdp-day_button-border-radius: 8px;
-  --rdp-today-color: #a78bfa;
+  --rdp-today-color: #a1a1aa;
   --rdp-outside-opacity: 0.35;
   --rdp-nav_button-height: 1.75rem;
   --rdp-nav_button-width: 1.75rem;
@@ -467,8 +467,7 @@ textarea:focus-visible {
   color: #71717a;
   font-size: 0.7rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.01em;
 }
 
 .rdp-nav_button {
@@ -497,14 +496,13 @@ textarea:focus-visible {
 }
 
 .rdp-selected .rdp-day_button {
-  background: linear-gradient(135deg, #7c3aed, #6366f1) !important;
-  color: #ffffff !important;
-  font-weight: 700;
-  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.4);
+  background: #f4f4f5 !important;
+  color: #09090b !important;
+  font-weight: 600;
 }
 
 .rdp-today:not(.rdp-selected) .rdp-day_button {
-  border: 1px solid rgba(139, 92, 246, 0.5);
-  color: #c4b5fd;
+  border: 1px solid #3f3f46;
+  color: #e4e4e7;
   font-weight: 600;
 }

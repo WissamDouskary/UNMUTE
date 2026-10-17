@@ -46,7 +46,7 @@ export function CustomSelect<T extends string = string>({
         className={cn(
           'inline-flex items-center justify-between gap-2 border transition-all cursor-pointer select-none',
           'bg-zinc-900/80 hover:bg-zinc-850 text-zinc-300 border-zinc-800 hover:border-zinc-700',
-          'focus:outline-none focus:ring-1 focus:ring-violet-500/50 shadow-sm',
+          'focus:outline-none focus:ring-1 focus:ring-zinc-700',
           sizeClasses,
           buttonClassName,
           className
@@ -93,7 +93,7 @@ export function CustomSelect<T extends string = string>({
                 className={cn(
                   'relative flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 select-none outline-none transition-colors cursor-pointer',
                   'hover:bg-zinc-800 hover:text-white focus:bg-zinc-800 focus:text-white',
-                  'data-[state=checked]:bg-violet-600/15 data-[state=checked]:text-violet-300 data-[state=checked]:font-semibold'
+                  'data-[state=checked]:bg-zinc-800 data-[state=checked]:text-zinc-100'
                 )}
               >
                 <div className="flex items-center gap-2 truncate">
@@ -114,7 +114,7 @@ export function CustomSelect<T extends string = string>({
                 </div>
 
                 <Select.ItemIndicator>
-                  <Check className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+                  <Check className="w-3.5 h-3.5 text-zinc-300 flex-shrink-0" />
                 </Select.ItemIndicator>
               </Select.Item>
             ))}
