@@ -28,6 +28,22 @@ import { RichTextEditor, cleanTaskTitle } from '../components/RichTextEditor';
 import { useLiveEvent } from '../hooks/useLiveEvents';
 
 type FilterTab = 'all' | 'pinned' | 'archived';
+
+const AI_IDLE_MS = 4000;
+
+/** Notes caches are either a list or a Spring page (`{ content }`). Home and the command palette use the page. */
+function updateNotesCache(old: unknown, update: (notes: Note[]) => Note[]): unknown {
+  if (Array.isArray(old)) return update(old as Note[]);
+  if (
+    old &&
+    typeof old === 'object' &&
+    Array.isArray((old as { content?: unknown }).content)
+  ) {
+    const page = old as { content: Note[] };
+    return { ...page, content: update(page.content) };
+  }
+  return old;
+}
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
 export function NotesPage() {
@@ -99,6 +115,7 @@ export function NotesPage() {
 
   const contentRef = useRef<string>(content);
   contentRef.current = content;
+  const postponeAiRef = useRef<() => void>(() => {});
 
   const tagsRef = useRef<string[]>(tags);
   tagsRef.current = tags;
@@ -153,11 +170,11 @@ export function NotesPage() {
   // If directNote arrives and is not yet in notesData cache, inject it into the cache
   useEffect(() => {
     if (directNote) {
-      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
-        if (!old) return [directNote];
-        if (old.some((n) => n.id === directNote.id)) return old;
-        return [directNote, ...old];
-      });
+      queryClient.setQueriesData({ queryKey: ['notes'] }, (old) =>
+        updateNotesCache(old, (notes) =>
+          notes.some((n) => n.id === directNote.id) ? notes : [directNote, ...notes]
+        )
+      );
       setSelectedNoteId(directNote.id);
     }
   }, [directNote, queryClient]);
@@ -237,10 +254,9 @@ export function NotesPage() {
       setSaveStatus('saving');
     },
     onSuccess: (updated) => {
-      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
-        if (!old) return [];
-        return old.map((n) => (n.id === updated.id ? updated : n));
-      });
+      queryClient.setQueriesData({ queryKey: ['notes'] }, (old) =>
+        updateNotesCache(old, (notes) => notes.map((n) => (n.id === updated.id ? updated : n)))
+      );
       queryClient.invalidateQueries({ queryKey: ['tags'] });
       setSaveStatus('saved');
     },
@@ -417,6 +433,7 @@ export function NotesPage() {
   const handleTitleChange = (newTitle: string) => {
     setTitle(newTitle);
     titleRef.current = newTitle;
+    postponeAiRef.current();
     triggerAutoSave({ title: newTitle });
   };
 
@@ -424,6 +441,7 @@ export function NotesPage() {
     (newHtml: string) => {
       setContent(newHtml);
       contentRef.current = newHtml;
+      postponeAiRef.current();
       triggerAutoSave({ content: newHtml });
     },
     [triggerAutoSave]
@@ -434,10 +452,9 @@ export function NotesPage() {
     mutationFn: (newNoteData: { title: string; content: string; tags: string[]; isPinned: boolean }) =>
       apiClient.createNote(newNoteData),
     onSuccess: (newNote) => {
-      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
-        if (!old) return [newNote];
-        return [newNote, ...old];
-      });
+      queryClient.setQueriesData({ queryKey: ['notes'] }, (old) =>
+        updateNotesCache(old, (notes) => [newNote, ...notes.filter((n) => n.id !== newNote.id)])
+      );
       queryClient.invalidateQueries({ queryKey: ['notes'] });
       queryClient.invalidateQueries({ queryKey: ['tags'] });
 
@@ -489,20 +506,19 @@ export function NotesPage() {
       await queryClient.cancelQueries({ queryKey: ['notes'] });
       const previousNotes = queryClient.getQueryData<Note[]>(notesQueryKey);
 
-      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
-        if (!old) return [];
-        if (activeTab === 'pinned') {
-          return old.filter((n) => n.id !== targetId);
-        }
-        const updatedList = old.map((n) =>
-          n.id === targetId ? { ...n, isPinned: !n.isPinned } : n
-        );
-        return [...updatedList].sort((a, b) => {
-          if (a.isPinned && !b.isPinned) return -1;
-          if (!a.isPinned && b.isPinned) return 1;
-          return 0;
-        });
-      });
+      queryClient.setQueriesData({ queryKey: ['notes'] }, (old) =>
+        updateNotesCache(old, (notes) => {
+          if (activeTab === 'pinned') return notes.filter((n) => n.id !== targetId);
+          const updatedList = notes.map((n) =>
+            n.id === targetId ? { ...n, isPinned: !n.isPinned } : n
+          );
+          return [...updatedList].sort((a, b) => {
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            return 0;
+          });
+        })
+      );
 
       return { previousNotes };
     },
@@ -540,16 +556,14 @@ export function NotesPage() {
       // Optimistically update:
       // When in 'all' (active notes) or 'pinned', an archived note must disappear immediately!
       // When in 'archived', an unarchived note must disappear immediately!
-      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
-        if (!old) return [];
-        if (activeTab === 'all' || activeTab === 'pinned') {
-          return old.filter((n) => n.id !== targetId);
-        }
-        if (activeTab === 'archived') {
-          return old.filter((n) => n.id !== targetId);
-        }
-        return old.map((n) => (n.id === targetId ? { ...n, isArchived: !n.isArchived } : n));
-      });
+      queryClient.setQueriesData({ queryKey: ['notes'] }, (old) =>
+        updateNotesCache(old, (notes) => {
+          if (activeTab === 'all' || activeTab === 'pinned' || activeTab === 'archived') {
+            return notes.filter((n) => n.id !== targetId);
+          }
+          return notes.map((n) => (n.id === targetId ? { ...n, isArchived: !n.isArchived } : n));
+        })
+      );
 
       // Advance selectedNoteId to another note if current note was archived/unarchived
       if (selectedNoteId === targetId) {
@@ -591,10 +605,9 @@ export function NotesPage() {
       await queryClient.cancelQueries({ queryKey: ['notes'] });
       const previousNotes = queryClient.getQueryData<Note[]>(notesQueryKey);
 
-      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
-        if (!old) return [];
-        return old.filter((n) => n.id !== targetId);
-      });
+      queryClient.setQueriesData({ queryKey: ['notes'] }, (old) =>
+        updateNotesCache(old, (notes) => notes.filter((n) => n.id !== targetId))
+      );
 
       if (selectedNoteId === targetId) {
         const remaining = (previousNotes || []).filter((n) => n.id !== targetId);
@@ -643,21 +656,21 @@ export function NotesPage() {
       const previousNotes = queryClient.getQueryData<Note[]>(notesQueryKey);
 
       const idSet = new Set(ids);
-      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
-        if (!old) return [];
-        if (activeTab === 'pinned' && !targetPinState) {
-          // If we unpinned notes while in pinned tab, filter them out!
-          return old.filter((n) => !idSet.has(n.id));
-        }
-        const updatedList = old.map((n) =>
-          idSet.has(n.id) ? { ...n, isPinned: targetPinState } : n
-        );
-        return [...updatedList].sort((a, b) => {
-          if (a.isPinned && !b.isPinned) return -1;
-          if (!a.isPinned && b.isPinned) return 1;
-          return 0;
-        });
-      });
+      queryClient.setQueriesData({ queryKey: ['notes'] }, (old) =>
+        updateNotesCache(old, (notes) => {
+          if (activeTab === 'pinned' && !targetPinState) {
+            return notes.filter((n) => !idSet.has(n.id));
+          }
+          const updatedList = notes.map((n) =>
+            idSet.has(n.id) ? { ...n, isPinned: targetPinState } : n
+          );
+          return [...updatedList].sort((a, b) => {
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            return 0;
+          });
+        })
+      );
 
       setSelectedNoteIds(new Set());
       setIsSelectionModeActive(false);
@@ -690,10 +703,9 @@ export function NotesPage() {
       const previousNotes = queryClient.getQueryData<Note[]>(notesQueryKey);
 
       const idSet = new Set(ids);
-      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
-        if (!old) return [];
-        return old.filter((n) => !idSet.has(n.id));
-      });
+      queryClient.setQueriesData({ queryKey: ['notes'] }, (old) =>
+        updateNotesCache(old, (notes) => notes.filter((n) => !idSet.has(n.id)))
+      );
 
       if (selectedNoteId && idSet.has(selectedNoteId)) {
         const remaining = (previousNotes || []).filter((n) => !idSet.has(n.id));
@@ -733,10 +745,9 @@ export function NotesPage() {
       const previousNotes = queryClient.getQueryData<Note[]>(notesQueryKey);
 
       const idSet = new Set(ids);
-      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
-        if (!old) return [];
-        return old.filter((n) => !idSet.has(n.id));
-      });
+      queryClient.setQueriesData({ queryKey: ['notes'] }, (old) =>
+        updateNotesCache(old, (notes) => notes.filter((n) => !idSet.has(n.id)))
+      );
 
       if (selectedNoteId && idSet.has(selectedNoteId)) {
         const remaining = (previousNotes || []).filter((n) => !idSet.has(n.id));
@@ -873,10 +884,9 @@ export function NotesPage() {
       });
     },
     onSuccess: (updated) => {
-      queryClient.setQueriesData<Note[]>({ queryKey: ['notes'] }, (old) => {
-        if (!old) return [];
-        return old.map((n) => (n.id === updated.id ? updated : n));
-      });
+      queryClient.setQueriesData({ queryKey: ['notes'] }, (old) =>
+        updateNotesCache(old, (notes) => notes.map((n) => (n.id === updated.id ? updated : n)))
+      );
       queryClient.invalidateQueries({ queryKey: ['notes'] });
       queryClient.invalidateQueries({ queryKey: ['tags'] });
     },
@@ -1134,14 +1144,52 @@ export function NotesPage() {
     },
   });
 
+  const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingAiRef = useRef<'summarize' | 'extract' | null>(null);
+  const summarizeMutationRef = useRef(summarizeMutation);
+  summarizeMutationRef.current = summarizeMutation;
+  const extractTasksMutationRef = useRef(extractTasksMutation);
+  extractTasksMutationRef.current = extractTasksMutation;
+
+  const clearAiTimer = () => {
+    if (aiTimerRef.current) {
+      clearTimeout(aiTimerRef.current);
+      aiTimerRef.current = null;
+    }
+  };
+
+  const armAi = (action: 'summarize' | 'extract') => {
+    const plain = contentRef.current.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim();
+    if (!plain) return;
+    pendingAiRef.current = action;
+    clearAiTimer();
+    aiTimerRef.current = setTimeout(() => {
+      aiTimerRef.current = null;
+      const kind = pendingAiRef.current;
+      pendingAiRef.current = null;
+      const latest = contentRef.current;
+      const stillText = latest.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim();
+      if (!kind || !stillText) return;
+      if (kind === 'summarize') {
+        if (!summarizeMutationRef.current.isPending) summarizeMutationRef.current.mutate(latest);
+        return;
+      }
+      if (!extractTasksMutationRef.current.isPending) extractTasksMutationRef.current.mutate(latest);
+    }, AI_IDLE_MS);
+  };
+
+  postponeAiRef.current = () => {
+    if (pendingAiRef.current) armAi(pendingAiRef.current);
+  };
+
+  useEffect(() => clearAiTimer, []);
+
   const handleAiSummarize = () => {
-    if (!content.trim()) return;
-    summarizeMutation.mutate(content);
+    armAi('summarize');
   };
 
   const handleAiExtractTasks = () => {
-    if (!content.trim()) return;
-    extractTasksMutation.mutate(content);
+    armAi('extract');
   };
 
   const autoTagMutation = useMutation({
