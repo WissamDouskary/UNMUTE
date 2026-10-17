@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { apiClient, Source, SourceStatus } from '@unmute/api-client';
+import { responsiveDialogContentClass, sheetHandleClass } from '../components/ui/responsiveDialog';
 
 export const SourcesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -320,7 +321,7 @@ export const SourcesPage: React.FC = () => {
 
   return (
     <div className="flex-1 w-full flex flex-col bg-transparent h-full overflow-y-auto">
-      <div className="w-full px-4 sm:px-8 xl:px-12 py-6 pb-20 flex flex-col gap-8">
+      <div className="w-full px-4 md:px-8 xl:px-12 py-6 pb-20 flex flex-col gap-8">
         {/* Header Title Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-800/60 pb-6">
           <div>
@@ -367,7 +368,7 @@ export const SourcesPage: React.FC = () => {
         {/* ======================================================== */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* 1. Native Voice Recording Widget (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col justify-between p-6 rounded-2xl bg-gradient-to-b from-zinc-800/50 to-zinc-900/50 border border-zinc-800/80 ring-1 ring-inset ring-white/10 relative overflow-hidden backdrop-blur-sm group">
+          <div className="lg:col-span-5 flex flex-col justify-between p-6 rounded-2xl max-md:rounded-lg bg-gradient-to-b from-zinc-800/50 to-zinc-900/50 border border-zinc-800/80 ring-1 ring-inset ring-white/10 relative overflow-hidden backdrop-blur-sm group">
             {/* Ambient Background Glow */}
             <div
               className={`absolute -top-24 -left-24 w-60 h-60 rounded-full blur-3xl transition-opacity duration-700 pointer-events-none ${
@@ -551,7 +552,7 @@ export const SourcesPage: React.FC = () => {
                 <button
                   onClick={() => setUploadError(null)}
                   aria-label="Dismiss error"
-                  className="p-1 hover:bg-rose-500/20 rounded cursor-pointer"
+                  className="flex max-md:min-h-11 max-md:min-w-11 items-center justify-center p-1 hover:bg-rose-500/20 rounded cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -617,7 +618,7 @@ export const SourcesPage: React.FC = () => {
                 <button
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search"
-                  className="absolute end-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+                  className="absolute end-1 top-1/2 flex max-md:min-h-11 max-md:min-w-11 -translate-y-1/2 items-center justify-center text-zinc-400 hover:text-zinc-200"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -633,7 +634,7 @@ export const SourcesPage: React.FC = () => {
             </div>
           ) : filteredSources.length === 0 ? (
             /* Premium Empty State */
-            <div className="flex flex-col items-center justify-center py-24 px-6 mt-2 border border-dashed border-zinc-800/60 rounded-2xl bg-zinc-900/20 text-center">
+            <div className="flex flex-col items-center justify-center py-24 px-6 mt-2 border border-dashed border-zinc-800/60 rounded-2xl max-md:rounded-lg bg-zinc-900/20 text-center">
               <div className="p-4 rounded-2xl bg-zinc-800/40 text-zinc-400 mb-3 border border-zinc-700/40">
                 <FileAudio className="w-8 h-8 stroke-[1.5]" />
               </div>
@@ -650,7 +651,7 @@ export const SourcesPage: React.FC = () => {
             </div>
           ) : (
             /* Sources Grid */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
               {filteredSources.map((source) => {
                 const isTranscribing =
                   source.status === 'PENDING' || source.status === 'TRANSCRIBING';
@@ -802,7 +803,7 @@ export const SourcesPage: React.FC = () => {
       {/* SOURCE DETAIL SLIDE-OUT DRAWER                           */}
       {/* ======================================================== */}
       {selectedSource && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="fixed inset-0 z-50">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
@@ -810,7 +811,8 @@ export const SourcesPage: React.FC = () => {
           />
 
           {/* Drawer Canvas */}
-          <div className="relative w-full max-w-xl bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col h-full z-10 overflow-hidden animate-in slide-in-from-right duration-200">
+          <div className={`${responsiveDialogContentClass} z-10 flex w-full flex-col bg-zinc-950 shadow-2xl md:fixed md:inset-y-0 md:right-0 md:bottom-auto md:left-auto md:h-full md:max-h-none md:max-w-xl md:rounded-none md:border-l md:border-t-0 md:border-zinc-800 md:overflow-hidden`}>
+            <div className={sheetHandleClass} aria-hidden />
             {/* Drawer Header */}
             <div className="p-6 border-b border-zinc-800 flex items-start justify-between gap-4 bg-zinc-900/40">
               <div className="flex items-center gap-3 min-w-0">
@@ -843,7 +845,7 @@ export const SourcesPage: React.FC = () => {
               <button
                 onClick={() => setSelectedSource(null)}
                 aria-label="Close details"
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition-colors cursor-pointer"
+                className="flex max-md:min-h-11 max-md:min-w-11 items-center justify-center p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

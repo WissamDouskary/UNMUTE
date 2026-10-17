@@ -173,6 +173,21 @@ export const KnowledgeGraphPage: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    const lockTouch = () => {
+      root.style.touchAction = 'none';
+      root.querySelectorAll<HTMLElement>('.force-graph-container, canvas').forEach((node) => {
+        node.style.touchAction = 'none';
+      });
+    };
+    lockTouch();
+    const observer = new MutationObserver(lockTouch);
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   // Node objects are reused across refetches so the simulation keeps their positions.
   const { nodesById, edges, neighbors, counts } = useMemo(() => {
     const nodesById = new Map<string, GNode>();
@@ -452,6 +467,7 @@ export const KnowledgeGraphPage: React.FC = () => {
       style={{
         backgroundImage: 'radial-gradient(rgba(63, 63, 70, 0.35) 1px, transparent 1px)',
         backgroundSize: '22px 22px',
+        touchAction: 'none',
       }}
     >
       {canRenderGraph && (
@@ -488,6 +504,9 @@ export const KnowledgeGraphPage: React.FC = () => {
           d3VelocityDecay={0.55}
           minZoom={0.25}
           maxZoom={8}
+          enablePointerInteraction
+          enableZoomInteraction
+          enablePanInteraction
           onNodeHover={(node) => setHoverId(node ? (node.id as string) : null)}
           onNodeClick={handleNodeClick}
           onBackgroundClick={() => setSelectedId(null)}

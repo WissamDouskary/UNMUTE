@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { apiClient, Note, Task, type ExtractedTaskItem } from '@unmute/api-client';
 import { RichTextEditor, cleanTaskTitle } from '../components/RichTextEditor';
+import { responsiveDialogContentClass, sheetHandleClass } from '../components/ui/responsiveDialog';
 import { useLiveEvent } from '../hooks/useLiveEvents';
 
 type FilterTab = 'all' | 'pinned' | 'archived';
@@ -1738,13 +1739,13 @@ export function NotesPage() {
         {activeNote ? (
           <>
             {/* Top Editor Action Bar */}
-            <div className="h-14 px-3 sm:px-8 border-b border-zinc-800/80 flex items-center justify-between gap-2 sm:gap-4 bg-zinc-950/80 backdrop-blur-md flex-shrink-0">
+            <div className="h-14 px-4 md:px-8 border-b border-zinc-800/80 flex items-center justify-between gap-2 sm:gap-4 bg-zinc-950/80 backdrop-blur-md flex-shrink-0">
               {/* Save Status & Breadcrumb */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <button
                   onClick={() => setMobilePane('list')}
                   aria-label="Back to notes"
-                  className="md:hidden -ml-1 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors cursor-pointer"
+                  className="md:hidden -ml-1 flex max-md:min-h-11 max-md:min-w-11 items-center justify-center p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -1868,7 +1869,7 @@ export function NotesPage() {
                   onClick={() => handleTogglePin()}
                   title={isPinned ? 'Unpin' : 'Pin note'}
                   aria-label={isPinned ? 'Unpin' : 'Pin note'}
-                  className={`p-2 rounded-lg border transition-colors cursor-pointer ${
+                  className={`flex max-md:min-h-11 max-md:min-w-11 items-center justify-center p-2 rounded-lg border transition-colors cursor-pointer ${
                     isPinned
                       ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
                       : 'border-zinc-800 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200'
@@ -1882,7 +1883,7 @@ export function NotesPage() {
                   onClick={() => handleToggleArchive()}
                   title={isArchived ? 'Restore from Archive' : 'Archive note'}
                   aria-label={isArchived ? 'Restore from Archive' : 'Archive note'}
-                  className={`p-2 rounded-lg border transition-colors cursor-pointer ${
+                  className={`flex max-md:min-h-11 max-md:min-w-11 items-center justify-center p-2 rounded-lg border transition-colors cursor-pointer ${
                     isArchived
                       ? 'bg-zinc-800 border-zinc-600 text-zinc-100'
                       : 'border-zinc-800 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200'
@@ -1896,7 +1897,7 @@ export function NotesPage() {
                   onClick={() => setDeleteConfirmId(activeNote.id)}
                   title="Delete note"
                   aria-label="Delete note"
-                  className="p-2 rounded-lg border border-zinc-800 hover:bg-red-500/10 hover:border-red-500/30 text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
+                  className="flex max-md:min-h-11 max-md:min-w-11 items-center justify-center p-2 rounded-lg border border-zinc-800 hover:bg-red-500/10 hover:border-red-500/30 text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -1940,7 +1941,7 @@ export function NotesPage() {
                           <button
                             onClick={() => handleRemoveTag(tag)}
                             aria-label={`Remove tag ${tag}`}
-                            className="hover:text-red-400 transition-colors cursor-pointer"
+                            className="flex max-md:min-h-11 max-md:min-w-11 items-center justify-center hover:text-red-400 transition-colors cursor-pointer"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -2022,7 +2023,7 @@ export function NotesPage() {
             <button
               onClick={() => setMobilePane('list')}
               aria-label="Back to notes"
-              className="md:hidden absolute top-3 left-3 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors cursor-pointer"
+              className="md:hidden absolute top-3 left-3 flex max-md:min-h-11 max-md:min-w-11 items-center justify-center p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -2075,7 +2076,7 @@ export function NotesPage() {
           <button
             onClick={() => setAiNotification(null)}
             aria-label="Dismiss notification"
-            className="text-zinc-500 hover:text-zinc-300 ml-2 cursor-pointer"
+            className="flex max-md:min-h-11 max-md:min-w-11 items-center justify-center text-zinc-500 hover:text-zinc-300 ml-2 cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -2098,7 +2099,7 @@ export function NotesPage() {
               <button
                 onClick={() => setShowLinkedTasksDrawer(false)}
                 aria-label="Close linked tasks"
-                className="p-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 cursor-pointer"
+                className="flex max-md:min-h-11 max-md:min-w-11 items-center justify-center p-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2203,8 +2204,10 @@ export function NotesPage() {
 
       {/* Delete Confirmation Modal (Single Note) */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+        <>
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteConfirmId(null)} />
+          <div className={`${responsiveDialogContentClass} p-6 shadow-2xl md:fixed md:left-1/2 md:top-1/2 md:z-50 md:w-full md:max-w-sm md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:border md:border-zinc-800 md:bg-zinc-900`}>
+            <div className={sheetHandleClass} aria-hidden />
             <h3 className="text-base font-bold text-zinc-100 mb-2">Delete this note?</h3>
             <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
               This action cannot be undone. All blocks, tables, and content associated with this note
@@ -2225,13 +2228,15 @@ export function NotesPage() {
               </button>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Batch Delete Confirmation Modal (Multi-Select) */}
       {batchDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+        <>
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setBatchDeleteConfirm(false)} />
+          <div className={`${responsiveDialogContentClass} p-6 shadow-2xl md:fixed md:left-1/2 md:top-1/2 md:z-50 md:w-full md:max-w-sm md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:border md:border-zinc-800 md:bg-zinc-900`}>
+            <div className={sheetHandleClass} aria-hidden />
             <h3 className="text-base font-bold text-zinc-100 mb-2">
               Delete {selectedNoteIds.size} {selectedNoteIds.size === 1 ? 'note' : 'notes'}?
             </h3>
@@ -2258,7 +2263,7 @@ export function NotesPage() {
               </button>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

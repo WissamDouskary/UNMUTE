@@ -29,6 +29,7 @@ export function CalendarPage() {
   const [params] = useSearchParams();
   const [day, setDay] = useState(() => startOfLocalDay(new Date()));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [tasksOpen, setTasksOpen] = useState(false);
   const [hoverSlot, setHoverSlot] = useState<number | null>(null);
   const [drag, setDrag] = useState<{ task: Task; x: number; y: number } | null>(null);
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
@@ -173,7 +174,7 @@ export function CalendarPage() {
 
   return (
     <div className="flex h-full min-h-0 bg-zinc-950 text-zinc-100">
-      <aside className="flex w-64 shrink-0 flex-col border-r border-zinc-800">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-zinc-800 md:flex">
         <div className="border-b border-zinc-800 px-4 py-3">
           <h2 className="text-sm font-medium tracking-tight">Unscheduled</h2>
           <p className="mt-1 text-xs text-zinc-400">Drag a task onto a half hour.</p>
@@ -189,7 +190,7 @@ export function CalendarPage() {
               onPointerDown={(event) => onChipPointerDown(event, task)}
               onPointerMove={onChipPointerMove}
               onPointerUp={onChipPointerUp}
-              className={`w-full cursor-grab rounded-lg bg-zinc-900 px-3 py-2 text-left text-sm ring-1 ring-inset ring-white/10 select-none hover:bg-zinc-800/50 ${press}`}
+              className={`w-full max-md:min-h-11 cursor-grab rounded-lg bg-zinc-900 px-3 py-2 text-left text-sm ring-1 ring-inset ring-white/10 select-none hover:bg-zinc-800/50 ${press}`}
             >
               {task.title}
             </button>
@@ -203,7 +204,7 @@ export function CalendarPage() {
             type="button"
             aria-label="Previous day"
             onClick={() => setDay((current) => startOfLocalDay(addDays(current, -1)))}
-            className={`flex h-9 w-9 items-center justify-center rounded-lg text-zinc-300 hover:bg-zinc-800/50 cursor-pointer ${press}`}
+            className={`flex h-9 w-9 max-md:h-11 max-md:w-11 max-md:min-h-11 max-md:min-w-11 items-center justify-center rounded-lg text-zinc-300 hover:bg-zinc-800/50 cursor-pointer ${press}`}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -217,7 +218,7 @@ export function CalendarPage() {
             type="button"
             aria-label="Next day"
             onClick={() => setDay((current) => startOfLocalDay(addDays(current, 1)))}
-            className={`flex h-9 w-9 items-center justify-center rounded-lg text-zinc-300 hover:bg-zinc-800/50 cursor-pointer ${press}`}
+            className={`flex h-9 w-9 max-md:h-11 max-md:w-11 max-md:min-h-11 max-md:min-w-11 items-center justify-center rounded-lg text-zinc-300 hover:bg-zinc-800/50 cursor-pointer ${press}`}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -286,7 +287,7 @@ export function CalendarPage() {
       </section>
 
       {selected && (
-        <aside className="flex w-80 shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
+        <aside className="hidden w-80 shrink-0 flex-col border-l border-zinc-800 bg-zinc-950 md:flex">
           <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
             <div>
               <h2 className="text-sm font-medium tracking-tight">{selected.title}</h2>
@@ -326,6 +327,89 @@ export function CalendarPage() {
             </button>
           </div>
         </aside>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setTasksOpen((open) => !open)}
+        className={`fixed right-4 z-30 min-h-11 rounded-lg bg-zinc-100 px-4 text-sm font-medium text-zinc-950 md:hidden bottom-[calc(4.5rem+env(safe-area-inset-bottom))] ${press}`}
+      >
+        Tasks
+      </button>
+
+      {tasksOpen && (
+        <div className="fixed inset-x-0 z-50 max-h-[40dvh] overflow-y-auto rounded-t-2xl border-t border-zinc-800 bg-zinc-950 md:hidden bottom-[calc(3.5rem+env(safe-area-inset-bottom))]">
+          <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-zinc-600" aria-hidden />
+          <div className="flex items-center justify-between px-4 py-2">
+            <h2 className="text-sm font-medium tracking-tight">Unscheduled</h2>
+            <button
+              type="button"
+              onClick={() => setTasksOpen(false)}
+              className={`min-h-11 text-xs text-zinc-400 ${press}`}
+            >
+              Close
+            </button>
+          </div>
+          <div className="space-y-2 px-3 pb-3">
+            {unscheduled.length === 0 && (
+              <p className="px-1 text-sm text-zinc-400">Every open task already has a time.</p>
+            )}
+            {unscheduled.map((task) => (
+              <button
+                key={task.id}
+                type="button"
+                onPointerDown={(event) => onChipPointerDown(event, task)}
+                onPointerMove={onChipPointerMove}
+                onPointerUp={onChipPointerUp}
+                className={`min-h-11 w-full cursor-grab rounded-lg bg-zinc-900 px-3 py-2 text-left text-sm ring-1 ring-inset ring-white/10 select-none hover:bg-zinc-800/50 ${press}`}
+              >
+                {task.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {selected && (
+        <div className="fixed inset-x-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-zinc-800 bg-zinc-950 md:hidden bottom-[calc(3.5rem+env(safe-area-inset-bottom))]">
+          <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-zinc-600" aria-hidden />
+          <div className="flex items-start justify-between gap-3 px-4 py-3">
+            <div>
+              <h2 className="text-sm font-medium tracking-tight">{selected.title}</h2>
+              <p className="mt-1 text-xs text-zinc-400">
+                {format(new Date(selected.startsAt), 'HH:mm')} – {format(new Date(selected.endsAt), 'HH:mm')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              className={`min-h-11 text-xs text-zinc-400 ${press}`}
+            >
+              Close
+            </button>
+          </div>
+          <div className="space-y-4 px-4 pb-4 text-sm text-zinc-300">
+            {selected.attendees.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs text-zinc-400">Attendees</p>
+                <ul className="space-y-1">
+                  {selected.attendees.map((attendee) => (
+                    <li key={attendee.email ?? attendee.name}>{attendee.name || attendee.email}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {selected.description && <p className="whitespace-pre-wrap leading-relaxed">{selected.description}</p>}
+            <button
+              type="button"
+              onClick={() => meetingNote.mutate(selected)}
+              disabled={meetingNote.isPending}
+              className={`min-h-11 w-full rounded-lg bg-zinc-100 text-sm font-medium text-zinc-950 hover:bg-white cursor-pointer disabled:opacity-60 ${press}`}
+            >
+              {meetingNote.isPending ? 'Creating…' : 'Create Meeting Note'}
+            </button>
+          </div>
+        </div>
       )}
 
       {drag && (

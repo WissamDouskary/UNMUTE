@@ -27,6 +27,7 @@ export function AskCompanion() {
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
+      <div className="max-md:hidden">
       <Dialog.Trigger asChild>
         <button
           type="button"
@@ -153,6 +154,7 @@ export function AskCompanion() {
           </form>
         </Dialog.Content>
       </Dialog.Portal>
+      </div>
     </Dialog.Root>
   );
 }

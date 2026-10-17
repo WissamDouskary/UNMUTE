@@ -195,6 +195,13 @@ textarea:focus-visible {
   cursor: pointer !important;
 }
 
+@media (max-width: 767px) {
+  .tiptap ul[data-type="taskList"] li > label {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+}
+
 /* Modern Cool Headless Checkbox (Replacing browser default square) */
 .tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
   appearance: none !important;

@@ -5,6 +5,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { FileText, Loader2, X } from 'lucide-react';
 import { apiClient, type Note, type Task, type TaskPriority } from '@unmute/api-client';
 import { PriorityPicker } from './PriorityPicker';
+import { responsiveDialogContentClass, sheetHandleClass } from '../ui/responsiveDialog';
 
 function stripHtml(value: string | null | undefined): string {
   if (!value) return '';
@@ -78,8 +79,9 @@ export function TaskDetailDrawer({
               event.preventDefault();
             }
           }}
-          className="fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l border-zinc-800 bg-zinc-950 outline-none focus:outline-none"
+          className={`${responsiveDialogContentClass} flex w-full flex-col bg-zinc-950 outline-none focus:outline-none md:fixed md:inset-y-0 md:right-0 md:bottom-auto md:z-50 md:h-full md:max-h-none md:max-w-md md:rounded-none md:border-l md:border-t-0 md:border-zinc-800`}
         >
+          <div className={sheetHandleClass} aria-hidden />
           {task && (
             <>
               <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-5 py-4">
@@ -91,7 +93,7 @@ export function TaskDetailDrawer({
                 </div>
                 <Dialog.Close
                   aria-label="Close task details"
-                  className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200 cursor-pointer outline-none"
+                  className="flex min-h-11 min-w-11 items-center justify-center rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200 cursor-pointer outline-none md:min-h-0 md:min-w-0 md:p-1.5"
                 >
                   <X className="h-4 w-4" />
                 </Dialog.Close>

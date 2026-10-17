@@ -4,6 +4,7 @@ import { CornerDownLeft, Loader2, Sparkles, X } from 'lucide-react';
 import { TaskPriority, CreateTaskRequest } from '@unmute/api-client';
 import { PriorityPicker } from './PriorityPicker';
 import { DatePickerPopover } from '../ui/DatePickerPopover';
+import { responsiveDialogContentClass, sheetHandleClass } from '../ui/responsiveDialog';
 
 interface QuickAddDialogProps {
   open: boolean;
@@ -53,7 +54,8 @@ export function QuickAddDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm animate-in fade-in-0 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
-        <Dialog.Content className="fixed left-1/2 top-[28%] -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-xl bg-zinc-950 border border-zinc-800/80 ring-1 ring-inset ring-white/10 rounded-xl p-5 outline-none animate-in fade-in-0 zoom-in-95 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
+        <Dialog.Content className={`${responsiveDialogContentClass} p-5 outline-none md:fixed md:left-1/2 md:top-[28%] md:z-50 md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl md:border md:border-zinc-800/80 md:bg-zinc-950 md:ring-1 md:ring-inset md:ring-white/10 animate-in fade-in-0 zoom-in-95 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95`}>
+          <div className={sheetHandleClass} aria-hidden />
           {/* Header Bar */}
           <div className="flex items-center justify-between pb-3 mb-2 border-b border-zinc-800/60">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400">
@@ -63,7 +65,7 @@ export function QuickAddDialog({
             <Dialog.Close asChild>
               <button
                 type="button"
-                className="text-zinc-500 hover:text-zinc-300 rounded-lg p-1 hover:bg-zinc-850 transition-colors cursor-pointer"
+                className="flex min-h-11 min-w-11 max-md:items-center max-md:justify-center items-center justify-center text-zinc-500 hover:text-zinc-300 rounded-lg p-1 hover:bg-zinc-850 transition-colors cursor-pointer md:min-h-0 md:min-w-0"
               >
                 <X className="w-4 h-4" />
               </button>

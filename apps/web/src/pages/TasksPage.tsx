@@ -24,6 +24,7 @@ import { PriorityPicker } from '../components/tasks/PriorityPicker';
 import { DatePickerPopover } from '../components/ui/DatePickerPopover';
 import { QuickAddDialog } from '../components/tasks/QuickAddDialog';
 import { TaskDetailDrawer } from '../components/tasks/TaskDetailDrawer';
+import { responsiveDialogContentClass, sheetHandleClass } from '../components/ui/responsiveDialog';
 import { cn } from '../lib/utils';
 
 type TaskFilterStatus = 'all' | 'pending' | 'completed';
@@ -226,7 +227,7 @@ export function TasksPage() {
       {/* =========================================================================
           TOP HEADER: Minimalist Title + Create Trigger (Centered Alignment)
       ========================================================================== */}
-      <div className="border-b border-zinc-850/40 bg-transparent px-4 sm:px-8 xl:px-12 py-2.5">
+      <div className="border-b border-zinc-850/40 bg-transparent px-4 md:px-8 xl:px-12 py-2.5">
         <div className="w-full flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <h1 className="text-sm font-semibold text-zinc-100 tracking-tight">
@@ -250,7 +251,7 @@ export function TasksPage() {
         </div>
       </div>
 
-      <div className="flex-1 w-full px-4 sm:px-8 xl:px-12">
+      <div className="flex-1 w-full px-4 md:px-8 xl:px-12">
         <div className="w-full pt-8 pb-12">
           {/* =========================================================================
               STATS CARDS: Unified Control Panel with bg-zinc-900/30 border-zinc-800/50 backdrop-blur-sm
@@ -357,7 +358,7 @@ export function TasksPage() {
                 <span>Loading tasks...</span>
               </div>
             ) : filteredTasks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 px-6 mt-8 border border-dashed border-zinc-800/60 ring-1 ring-inset ring-white/10 rounded-2xl bg-gradient-to-b from-zinc-800/50 to-zinc-900/50">
+              <div className="flex flex-col items-center justify-center py-24 px-6 mt-8 border border-dashed border-zinc-800/60 ring-1 ring-inset ring-white/10 rounded-2xl max-md:rounded-lg bg-gradient-to-b from-zinc-800/50 to-zinc-900/50">
                 <ListTodo className="w-12 h-12 text-zinc-700 mb-4" />
                 <h3 className="text-zinc-300 font-medium text-base mb-1">
                   {searchQuery || priorityFilter !== 'ALL' || statusFilter !== 'all'
@@ -399,7 +400,7 @@ export function TasksPage() {
                           toggleMutation.mutate(task.id);
                         }}
                         title={task.isCompleted ? 'Mark incomplete' : 'Mark complete'}
-                        className="cursor-pointer flex-shrink-0 transition-transform active:scale-95"
+                        className="flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center cursor-pointer flex-shrink-0 transition-transform active:scale-95"
                       >
                         {task.isCompleted ? (
                           <div className="w-4 h-4 rounded-[5px] bg-zinc-100 flex items-center justify-center text-zinc-950 border border-zinc-200">
@@ -483,14 +484,15 @@ export function TasksPage() {
                       </div>
 
                       {/* Quick-action buttons (ONLY shown on row hover) */}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      <div className="flex items-center gap-1 opacity-0 max-md:opacity-100 group-hover:opacity-100 transition-opacity flex-shrink-0">
                         <button
                           onClick={(event) => {
                             event.stopPropagation();
                             setDeleteConfirmId(task.id);
                           }}
                           title="Delete task"
-                          className="p-1 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
+                          aria-label="Delete task"
+                          className="flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center p-1 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -518,8 +520,13 @@ export function TasksPage() {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in-0 duration-100">
-          <div className="w-full max-w-sm rounded-2xl bg-zinc-950 border border-zinc-800 p-5 shadow-2xl shadow-black/80">
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm animate-in fade-in-0 duration-100"
+            onClick={() => setDeleteConfirmId(null)}
+          />
+          <div className={`${responsiveDialogContentClass} p-5 shadow-2xl shadow-black/80 md:fixed md:left-1/2 md:top-1/2 md:z-50 md:w-full md:max-w-sm md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:border md:border-zinc-800 md:bg-zinc-950`}>
+            <div className={sheetHandleClass} aria-hidden />
             <h3 className="text-sm font-bold text-zinc-100 mb-1.5">Delete task?</h3>
             <p className="text-xs text-zinc-400 mb-5 leading-relaxed">
               This task will be permanently removed. This action cannot be undone.
@@ -539,7 +546,7 @@ export function TasksPage() {
               </button>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

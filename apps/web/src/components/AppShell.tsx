@@ -9,23 +9,24 @@ import {
   Calendar,
   Radio,
   LogOut,
-  Menu,
-  X,
   Sparkles,
   Waypoints,
   Search,
+  Ellipsis,
 } from 'lucide-react';
 import { CommandPalette, OPEN_PALETTE_EVENT } from './CommandPalette';
 import { AskChatProvider } from '../context/AskChatContext';
 import { AskCompanion } from './ask/AskCompanion';
 import { InstallAppButton } from './InstallAppButton';
+import { MobileTabBar } from './MobileTabBar';
+import { sheetHandleClass } from './ui/responsiveDialog';
 
 export const AppShell: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const liveStatus = useLiveEventStream(isAuthenticated);
   const navigate = useNavigate();
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [offlineNotice, setOfflineNotice] = useState(
     typeof navigator !== 'undefined' ? !navigator.onLine : false,
@@ -107,43 +108,8 @@ export const AppShell: React.FC = () => {
         isFullBleed ? 'h-dvh overflow-hidden' : 'min-h-dvh'
       }`}
     >
-      {/* Mobile Top Header */}
-      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-[var(--color-surface-secondary)] border-b border-[var(--color-border)] sticky top-0 z-50">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#d4d4d8"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-              <line x1="12" x2="12" y1="19" y2="22" />
-            </svg>
-          </div>
-          <span className="font-bold tracking-tight text-lg">UNMUTE</span>
-        </div>
-
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-lg text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100 transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700"
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
-      </header>
-
-      {/* Sidebar for Desktop & Mobile Drawer */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 w-60 bg-zinc-950 border-r border-zinc-800 flex flex-col justify-between transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:h-dvh md:sticky md:top-0 ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+      {/* Sidebar stays mounted and is hidden below md */}
+      <aside className="hidden md:flex md:static md:h-dvh md:sticky md:top-0 w-60 bg-zinc-950 border-r border-zinc-800 flex-col justify-between">
         <div className="flex flex-col flex-1 p-4 overflow-y-auto">
           {/* Logo and App Title */}
           <div className="hidden md:flex items-center gap-2.5 px-2 py-2 mb-4">
@@ -180,7 +146,6 @@ export const AppShell: React.FC = () => {
                   key={item.to}
                   to={item.to}
                   end={item.exact}
-                  onClick={() => setMobileMenuOpen(false)}
                   className={({ isActive }) =>
                     `flex items-center justify-between px-2.5 py-1.5 rounded-lg text-sm transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700 ${
                       isActive
@@ -230,16 +195,34 @@ export const AppShell: React.FC = () => {
         </div>
       </aside>
 
-      {/* Backdrop overlay for mobile menu */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-30 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
-
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-w-0 ${isFullBleed ? 'min-h-0 overflow-hidden' : 'overflow-y-auto'}`}>
+      <div
+        className={`flex min-w-0 flex-1 flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0 ${
+          isFullBleed ? 'min-h-0 overflow-hidden' : 'overflow-y-auto'
+        }`}
+      >
+        <header className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950 px-4 pt-[env(safe-area-inset-top)] md:hidden">
+          <h2 className="min-w-0 truncate text-sm font-medium tracking-tight text-zinc-200">{pageTitle}</h2>
+          <div className="flex items-center">
+            <button
+              type="button"
+              aria-label="Search"
+              onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
+              className="flex min-h-11 min-w-11 items-center justify-center text-zinc-400 transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              aria-label="More"
+              aria-expanded={moreOpen}
+              onClick={() => setMoreOpen(true)}
+              className="flex min-h-11 min-w-11 items-center justify-center text-zinc-400 transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700"
+            >
+              <Ellipsis className="h-5 w-5" />
+            </button>
+          </div>
+        </header>
         {/* Top Header Bar */}
         <header className="hidden md:flex items-center justify-between h-12 px-6 border-b border-zinc-800 bg-zinc-950 sticky top-0 z-20 flex-shrink-0">
           <h2 className="text-sm font-medium tracking-tight text-zinc-200">{pageTitle}</h2>
@@ -303,6 +286,52 @@ export const AppShell: React.FC = () => {
 
         <AskCompanion />
       </div>
+
+      {moreOpen && (
+        <div className="fixed inset-0 z-50 md:hidden" role="presentation">
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setMoreOpen(false)}
+          />
+          <div className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-zinc-800 bg-zinc-950 pb-[env(safe-area-inset-bottom)]">
+            <div className={sheetHandleClass} aria-hidden />
+            <nav className="flex flex-col px-2 py-2" aria-label="More">
+              {navItems
+                .filter((item) => item.to === '/calendar' || item.to === '/sources' || item.to === '/graph')
+                .map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMoreOpen(false)}
+                      className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm text-zinc-300 transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700"
+                    >
+                      <Icon className="h-4 w-4 text-zinc-400" />
+                      <span>{item.name}</span>
+                    </NavLink>
+                  );
+                })}
+            </nav>
+            <div className="px-3 pb-2">
+              <InstallAppButton />
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="mt-1 flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm text-zinc-300 transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700 disabled:opacity-60"
+              >
+                <LogOut className="h-4 w-4 text-zinc-400" />
+                <span>{isLoggingOut ? 'Signing out…' : 'Sign out'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <MobileTabBar />
     </div>
     </AskChatProvider>
   );
