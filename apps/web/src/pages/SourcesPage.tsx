@@ -205,12 +205,13 @@ export const SourcesPage: React.FC = () => {
     const token = searchParams.get('record') === '1' ? searchParams.get('t') : null;
     if (!token || sessionStorage.getItem('unmute-record') === token) return;
     sessionStorage.setItem('unmute-record', token);
-    void startRecording();
     const next = new URLSearchParams(searchParams);
     next.delete('record');
     next.delete('t');
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+    if (isRecording) return;
+    void startRecording();
+  }, [searchParams, setSearchParams, isRecording]);
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
@@ -236,6 +237,22 @@ export const SourcesPage: React.FC = () => {
     }
     setRecordingDuration(0);
   };
+
+  const stopRef = useRef(stopRecording);
+  stopRef.current = stopRecording;
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('unmute:recording', { detail: { active: isRecording } }));
+  }, [isRecording]);
+
+  useEffect(() => {
+    const onStop = () => stopRef.current();
+    window.addEventListener('unmute:stop-recording', onStop);
+    return () => {
+      window.removeEventListener('unmute:stop-recording', onStop);
+      window.dispatchEvent(new CustomEvent('unmute:recording', { detail: { active: false } }));
+    };
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
