@@ -1,7 +1,8 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
+import { forceCenter, forceCollide } from 'd3-force-3d';
 import {
   AlertCircle,
   Archive,
@@ -10,7 +11,6 @@ import {
   FileText,
   Hash,
   Loader2,
-  Box,
   Maximize2,
   Radio,
   RefreshCw,
@@ -20,11 +20,6 @@ import {
 } from 'lucide-react';
 import { apiClient, type GraphEdgeType, type GraphNode, type GraphNodeType } from '@unmute/api-client';
 import { cn } from '../lib/utils';
-import type { KnowledgeGraph3DHandle } from '../components/graph/KnowledgeGraph3D';
-
-const KnowledgeGraph3D = lazy(() =>
-  import('../components/graph/KnowledgeGraph3D').then((mod) => ({ default: mod.KnowledgeGraph3D })),
-);
 
 type NodeData = GraphNode & { degree: number };
 type LinkData = { id: string; type: GraphEdgeType };
@@ -63,19 +58,41 @@ function nodeColor(node: GNode): string {
   return TYPE_META[node.type].color;
 }
 
-/** Weak pull toward the origin so disconnected clusters stay in view instead of drifting apart. */
-function createGravityForce(strength: number) {
+/** Pull same-type nodes toward their own centroid so the layout forms tight, stable groups. */
+function createClusterForce(strength: number) {
   let nodes: GNode[] = [];
   const force = (alpha: number) => {
+    const groups = new Map<string, { x: number; y: number; n: number }>();
     for (const node of nodes) {
-      node.vx = (node.vx ?? 0) - (node.x ?? 0) * strength * alpha;
-      node.vy = (node.vy ?? 0) - (node.y ?? 0) * strength * alpha;
+      const bucket = groups.get(node.type) ?? { x: 0, y: 0, n: 0 };
+      bucket.x += node.x ?? 0;
+      bucket.y += node.y ?? 0;
+      bucket.n += 1;
+      groups.set(node.type, bucket);
+    }
+    for (const node of nodes) {
+      const bucket = groups.get(node.type);
+      if (!bucket || bucket.n < 2) continue;
+      const pull = strength * alpha;
+      node.vx = (node.vx ?? 0) + (bucket.x / bucket.n - (node.x ?? 0)) * pull;
+      node.vy = (node.vy ?? 0) + (bucket.y / bucket.n - (node.y ?? 0)) * pull;
     }
   };
   force.initialize = (initNodes: GNode[]) => {
     nodes = initNodes;
   };
   return force;
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
 }
 
 function endId(end: GLink['source']): string | undefined {
@@ -105,7 +122,6 @@ export const KnowledgeGraphPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const graphRef = useRef<ForceGraphMethods<GNode, GLink> | undefined>(undefined);
-  const graph3dRef = useRef<KnowledgeGraph3DHandle>(null);
   const nodeCache = useRef(new Map<string, GNode>());
   const hasFittedRef = useRef(false);
   const lastClickRef = useRef<{ id: string; at: number } | null>(null);
@@ -116,7 +132,6 @@ export const KnowledgeGraphPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [view, setView] = useState<'2d' | '3d'>('2d');
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['graph', 'topology', includeArchived],
@@ -201,18 +216,39 @@ export const KnowledgeGraphPage: React.FC = () => {
 
   useEffect(() => {
     const fg = graphRef.current;
-    if (!fg) return;
-    fg.d3Force('charge')?.strength(-90).distanceMax(320);
-    fg.d3Force('link')?.distance((l: GLink) => (l.type === 'NOTE_TAGGED' ? 46 : 26));
-    fg.d3Force('gravity', createGravityForce(0.08));
+    if (!fg || !canRenderGraph) return;
+
+    for (const node of graphData.nodes) {
+      const far = Math.abs(node.x ?? 0) > 2500 || Math.abs(node.y ?? 0) > 2500;
+      if (far) {
+        node.x = undefined;
+        node.y = undefined;
+      }
+      node.vx = 0;
+      node.vy = 0;
+      node.fx = undefined;
+      node.fy = undefined;
+    }
+
+    fg.d3Force('charge')?.strength(-70)?.distanceMin(16)?.distanceMax(420);
+    fg.d3Force('link')?.distance((link: GLink) => (link.type === 'NOTE_TAGGED' ? 96 : 72))?.strength(0.4);
+    fg.d3Force('center', forceCenter(0, 0).strength(1));
+    fg.d3Force(
+      'collide',
+      forceCollide((node) => nodeRadius(node as GNode) + 14)
+        .strength(0.85)
+        .iterations(2),
+    );
+    fg.d3Force('cluster', createClusterForce(0.08));
+    fg.d3Force('gravity', null);
     fg.d3ReheatSimulation();
   }, [graphData, canRenderGraph]);
 
   const focusNode = useCallback((node: GNode) => {
     const fg = graphRef.current;
     if (!fg || node.x === undefined || node.y === undefined) return;
-    fg.centerAt(node.x, node.y, 600);
-    if (fg.zoom() < 2) fg.zoom(2.5, 600);
+    fg.centerAt(node.x, node.y, 800);
+    fg.zoom(2.6, 800);
   }, []);
 
   const openNode = useCallback(
@@ -273,8 +309,11 @@ export const KnowledgeGraphPage: React.FC = () => {
   };
 
   const zoomToFit = () => {
-    if (view === '3d') graph3dRef.current?.zoomToFit();
-    else graphRef.current?.zoomToFit(500, 60);
+    const fg = graphRef.current;
+    if (!fg) return;
+    fg.zoomToFit(0, 120);
+    const fitted = fg.zoom();
+    if (fitted > 1.35) fg.zoom(1.35, 0);
   };
 
   useEffect(() => {
@@ -308,12 +347,19 @@ export const KnowledgeGraphPage: React.FC = () => {
       const r = nodeRadius(node);
       const id = node.id as string;
       const color = nodeColor(node);
-      const isFocus = id === focusId;
-      const isSelected = id === selectedId;
-      const inActive = activeSet?.has(id) ?? false;
-      const dimmed = activeSet !== null && !inActive;
+      const hovered = id === hoverId;
+      const connected = hoverId ? (neighbors.get(hoverId)?.has(id) ?? false) : false;
+      const dimmed = hoverId
+        ? !hovered && !connected
+        : searchMatches !== null && !searchMatches.has(id);
 
-      ctx.globalAlpha = dimmed ? 0.12 : 1;
+      ctx.save();
+      ctx.globalAlpha = dimmed ? 0.15 : 1;
+      if (!dimmed) {
+        ctx.shadowBlur = hovered ? 22 : 15;
+        ctx.shadowColor = color;
+      }
+
       ctx.beginPath();
       if (node.type === 'SOURCE') {
         ctx.moveTo(x, y - r);
@@ -321,6 +367,9 @@ export const KnowledgeGraphPage: React.FC = () => {
         ctx.lineTo(x, y + r);
         ctx.lineTo(x - r, y);
         ctx.closePath();
+      } else if (node.type === 'TASK') {
+        const s = r * 1.55;
+        ctx.rect(x - s / 2, y - s / 2, s, s);
       } else {
         ctx.arc(x, y, r, 0, 2 * Math.PI);
       }
@@ -328,7 +377,8 @@ export const KnowledgeGraphPage: React.FC = () => {
       if (node.type === 'TAG') {
         ctx.fillStyle = BG_COLOR;
         ctx.fill();
-        ctx.lineWidth = 1.4;
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 1.5;
         ctx.strokeStyle = color;
         ctx.stroke();
       } else {
@@ -336,40 +386,44 @@ export const KnowledgeGraphPage: React.FC = () => {
         ctx.fill();
       }
 
-      if (isSelected || isFocus) {
+      ctx.shadowBlur = 0;
+      if (hovered || id === selectedId) {
         ctx.beginPath();
-        ctx.arc(x, y, r + 2.5, 0, 2 * Math.PI);
-        ctx.lineWidth = 1.5 / scale;
-        ctx.strokeStyle = 'rgba(250, 250, 250, 0.85)';
+        ctx.arc(x, y, r + 3.2, 0, 2 * Math.PI);
+        ctx.lineWidth = 1.25 / scale;
+        ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
         ctx.stroke();
       }
 
-      const showLabel =
-        isFocus ||
-        isSelected ||
-        (inActive && activeSet !== null) ||
-        scale >= 2.2 ||
-        (node.type === 'NOTE' && node.degree >= 3 && scale >= 1) ||
-        (node.type === 'TAG' && scale >= 1.4);
-
-      if (showLabel) {
-        const fontSize = 11 / scale;
+      if (hovered || scale > 2) {
+        const text = truncate(node.type === 'TAG' ? `#${node.label}` : node.label, 36);
+        const fontSize = 12 / scale;
         ctx.font = `500 ${fontSize}px Inter, ui-sans-serif, system-ui, sans-serif`;
+        const padX = 7 / scale;
+        const padY = 3.5 / scale;
+        const textWidth = ctx.measureText(text).width;
+        const pillW = textWidth + padX * 2;
+        const pillH = fontSize + padY * 2;
+        const pillX = x - pillW / 2;
+        const pillY = y + r + 5 / scale;
+        ctx.globalAlpha = dimmed ? 0.45 : 1;
+        ctx.fillStyle = 'rgba(9, 9, 11, 0.8)';
+        roundRect(ctx, pillX, pillY, pillW, pillH, pillH / 2);
+        ctx.fill();
+        ctx.fillStyle = '#fafafa';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillStyle = isFocus || isSelected ? '#fafafa' : '#a1a1aa';
-        const text = node.type === 'TAG' ? `#${node.label}` : node.label;
-        ctx.fillText(truncate(text, 36), x, y + r + 3 / scale);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x, pillY + pillH / 2);
       }
-      ctx.globalAlpha = 1;
+      ctx.restore();
     },
-    [focusId, selectedId, activeSet],
+    [hoverId, neighbors, searchMatches, selectedId],
   );
 
   const paintPointerArea = useCallback((node: GNode, color: string, ctx: CanvasRenderingContext2D) => {
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(node.x ?? 0, node.y ?? 0, nodeRadius(node) + 2, 0, 2 * Math.PI);
+    ctx.arc(node.x ?? 0, node.y ?? 0, nodeRadius(node) + 8, 0, 2 * Math.PI);
     ctx.fill();
   }, []);
 
@@ -384,26 +438,7 @@ export const KnowledgeGraphPage: React.FC = () => {
         backgroundSize: '22px 22px',
       }}
     >
-      {canRenderGraph && view === '3d' && (
-        <Suspense
-          fallback={
-            <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-500">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Opening 3D space…
-            </div>
-          }
-        >
-          <KnowledgeGraph3D
-            ref={graph3dRef}
-            graphData={graphData}
-            width={size.width}
-            height={size.height}
-            onOpen={(node) => openNode(node)}
-          />
-        </Suspense>
-      )}
-
-      {canRenderGraph && view === '2d' && (
+      {canRenderGraph && (
         <ForceGraph2D<NodeData, LinkData>
           ref={graphRef}
           width={size.width}
@@ -412,32 +447,41 @@ export const KnowledgeGraphPage: React.FC = () => {
           backgroundColor="rgba(0,0,0,0)"
           nodeId="id"
           nodeLabel={() => ''}
+          nodeCanvasObjectMode={() => 'replace'}
           nodeCanvasObject={drawNode}
           nodePointerAreaPaint={paintPointerArea}
-          linkColor={(l) =>
-            isLinkActive(l)
-              ? 'rgba(167, 139, 250, 0.75)'
+          linkColor={(link) =>
+            isLinkActive(link)
+              ? 'rgba(196, 181, 253, 0.85)'
               : activeSet
-                ? 'rgba(63, 63, 70, 0.18)'
-                : 'rgba(113, 113, 122, 0.35)'
+                ? 'rgba(63, 63, 70, 0.22)'
+                : 'rgba(113, 113, 122, 0.45)'
           }
-          linkWidth={(l) => (isLinkActive(l) ? 1.4 : 0.6)}
-          linkLineDash={(l) => (l.type === 'NOTE_TAGGED' ? [2, 2] : null)}
-          linkDirectionalParticles={(l) => (isLinkActive(l) ? 2 : 0)}
-          linkDirectionalParticleWidth={1.8}
-          linkDirectionalParticleSpeed={0.006}
-          linkDirectionalParticleColor={() => '#c4b5fd'}
-          cooldownTicks={150}
-          d3VelocityDecay={0.3}
-          minZoom={0.2}
+          linkWidth={(link) => (isLinkActive(link) ? 1.35 : 0.7)}
+          linkLineDash={(link) => (link.type === 'NOTE_TAGGED' ? [2, 3] : null)}
+          linkDirectionalParticles={2}
+          linkDirectionalParticleWidth={1.6}
+          linkDirectionalParticleSpeed={0.005}
+          linkDirectionalParticleColor={() => '#e4e4e7'}
+          warmupTicks={120}
+          cooldownTicks={220}
+          cooldownTime={4500}
+          d3AlphaDecay={0.035}
+          d3AlphaMin={0.015}
+          d3VelocityDecay={0.55}
+          minZoom={0.25}
           maxZoom={8}
           onNodeHover={(node) => setHoverId(node ? (node.id as string) : null)}
           onNodeClick={handleNodeClick}
           onBackgroundClick={() => setSelectedId(null)}
           onEngineStop={() => {
+            for (const node of graphData.nodes) {
+              node.vx = 0;
+              node.vy = 0;
+            }
             if (!hasFittedRef.current) {
               hasFittedRef.current = true;
-              graphRef.current?.zoomToFit(400, 60);
+              zoomToFit();
             }
           }}
         />
@@ -528,29 +572,6 @@ export const KnowledgeGraphPage: React.FC = () => {
           </button>
 
           <div className="mx-0.5 h-4 w-px bg-zinc-800" />
-          <div className="flex items-center rounded bg-zinc-950/60 p-0.5">
-            <button
-              type="button"
-              onClick={() => setView('2d')}
-              className={cn(
-                'h-5 rounded px-1.5 text-[10px] font-medium',
-                view === '2d' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300',
-              )}
-            >
-              2D
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('3d')}
-              className={cn(
-                'flex h-5 items-center gap-1 rounded px-1.5 text-[10px] font-medium',
-                view === '3d' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300',
-              )}
-            >
-              <Box className="h-3 w-3" />
-              3D
-            </button>
-          </div>
 
           <button
             onClick={() => refetch()}
@@ -572,7 +593,7 @@ export const KnowledgeGraphPage: React.FC = () => {
       </div>
 
       {/* Selection inspector */}
-      {view === '2d' && selectedNode && (
+      {selectedNode && (
         <NodeInspector
           node={selectedNode}
           neighborIds={[...(neighbors.get(selectedNode.id as string) ?? [])]}
@@ -650,7 +671,7 @@ const NodeInspector: React.FC<NodeInspectorProps> = ({ node, neighborIds, nodesB
     node.type === 'NOTE' ? 'Open note' : node.type === 'TASK' ? 'Open in context' : node.type === 'SOURCE' ? 'Open sources' : null;
 
   return (
-    <div className="absolute bottom-4 left-4 w-80 rounded-lg border border-zinc-800/50 bg-zinc-900/90 shadow-2xl shadow-black/40 backdrop-blur-md">
+    <div className="absolute bottom-4 right-4 z-20 w-80 rounded-2xl border border-zinc-800 bg-zinc-950/80 shadow-2xl shadow-black/50 backdrop-blur">
       <div className="flex items-start gap-2.5 border-b border-zinc-800/50 p-3">
         <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: meta.color }} />
         <div className="min-w-0 flex-1">
