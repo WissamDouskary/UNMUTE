@@ -23,7 +23,7 @@ import {
   ArrowUpRight,
   AlertCircle,
 } from 'lucide-react';
-import { apiClient, Note, Task } from '@unmute/api-client';
+import { apiClient, Note, Task, type ExtractedTaskItem } from '@unmute/api-client';
 import { RichTextEditor, cleanTaskTitle } from '../components/RichTextEditor';
 import { useLiveEvent } from '../hooks/useLiveEvents';
 
@@ -76,6 +76,7 @@ export function NotesPage() {
     message: string;
     type: 'success' | 'info' | 'error';
   } | null>(null);
+  const [calendarOffers, setCalendarOffers] = useState<ExtractedTaskItem[]>([]);
   const [showAiMenu, setShowAiMenu] = useState<boolean>(false);
   const [showLinkedTasksDrawer, setShowLinkedTasksDrawer] = useState<boolean>(false);
   const [newLinkedTaskTitle, setNewLinkedTaskTitle] = useState<string>('');
@@ -1117,6 +1118,7 @@ export function NotesPage() {
         }
 
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        setCalendarOffers((res.tasks ?? []).filter((task) => task.kind === 'EVENT' && task.startAt));
 
         setAiNotification({
           message:
@@ -1143,6 +1145,42 @@ export function NotesPage() {
       setTimeout(() => setAiNotification(null), 4000);
     },
   });
+
+  const addCalendarOffer = async (item: ExtractedTaskItem) => {
+    try {
+      const calendar = await apiClient.getCalendarStatus();
+      if (!calendar.connected) {
+        navigate('/calendar');
+        return;
+      }
+      let taskId = item.savedTaskId ?? undefined;
+      if (!taskId) {
+        const created = await apiClient.createTask({
+          title: item.title,
+          description: item.description,
+          priority: item.priority,
+          dueDate: item.dueDate,
+        });
+        taskId = created.id;
+      }
+      const start = item.startAt;
+      if (!start || !taskId) return;
+      const end = item.endAt ?? new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString();
+      await apiClient.blockCalendar({ taskId, start, end });
+      setCalendarOffers((current) => current.filter((offer) => offer !== item));
+      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setAiNotification({ message: `Added “${item.title}” to your calendar.`, type: 'success' });
+    } catch (error) {
+      const message =
+        error && typeof error === 'object' && 'message' in error ? String((error as { message: unknown }).message) : '';
+      if (/not connected/i.test(message)) {
+        navigate('/calendar');
+        return;
+      }
+      setAiNotification({ message: 'Could not add that item to the calendar.', type: 'error' });
+    }
+  };
 
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingAiRef = useRef<'summarize' | 'extract' | null>(null);
@@ -2006,6 +2044,26 @@ export function NotesPage() {
           </div>
         )}
       </div>
+
+      {calendarOffers.length > 0 && (
+        <div className="fixed bottom-36 left-4 right-4 z-50 mx-auto max-w-md rounded-lg bg-zinc-900 p-3 ring-1 ring-inset ring-white/10 sm:left-auto sm:right-6">
+          <p className="mb-2 text-sm text-zinc-200">Add this timed item to Google Calendar?</p>
+          <div className="space-y-2">
+            {calendarOffers.map((item) => (
+              <div key={`${item.title}-${item.startAt}`} className="flex items-center justify-between gap-3">
+                <span className="min-w-0 truncate text-sm text-zinc-300">{item.title}</span>
+                <button
+                  type="button"
+                  onClick={() => addCalendarOffer(item)}
+                  className="min-h-11 shrink-0 rounded-lg bg-zinc-100 px-3 text-sm font-medium text-zinc-950 transition-all duration-200 ease-out hover:bg-white active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-1 focus:ring-zinc-700"
+                >
+                  Add to calendar
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Floating AI Notification Toast */}
       {aiNotification && (

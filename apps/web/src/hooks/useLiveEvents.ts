@@ -36,6 +36,10 @@ function applyToCache(queryClient: QueryClient, event: LiveEvent) {
       break;
     case 'note.tag-failed':
       break;
+    case 'calendar.updated':
+      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      break;
   }
 }
 
@@ -54,6 +58,7 @@ export function useLiveEventStream(enabled: boolean): LiveConnectionStatus {
           queryClient.invalidateQueries({ queryKey: ['notes'] });
           queryClient.invalidateQueries({ queryKey: ['tags'] });
           queryClient.invalidateQueries({ queryKey: ['sources'] });
+          queryClient.invalidateQueries({ queryKey: ['calendar'] });
         }
       },
       onEvent: (event) => {

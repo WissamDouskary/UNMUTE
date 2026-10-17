@@ -121,7 +121,8 @@ public class AiService {
             withIds.add(original != null
                     ? original.withSavedTaskId(savedTask.getId())
                     : new ExtractedTaskItem(savedTask.getTitle(), savedTask.getDescription(),
-                    savedTask.getPriority(), savedTask.getDueDate(), savedTask.getId()));
+                    savedTask.getPriority(), savedTask.getDueDate(), savedTask.getId(),
+                    ExtractedTaskItem.ExtractionKind.TASK, null, null));
         }
 
         return withIds;

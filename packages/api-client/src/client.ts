@@ -35,6 +35,11 @@ import type {
   GraphTopologyParams,
   LiveEvent,
   LiveEventHandlers,
+  CalendarStatus,
+  AgendaResponse,
+  CalendarEvent,
+  BlockCalendarRequest,
+  MeetingNoteResponse,
 } from './types';
 import { readSseStream } from './sse';
 
@@ -43,6 +48,7 @@ const LIVE_EVENT_TYPES: ReadonlySet<string> = new Set<LiveEvent['type']>([
   'note.tag-failed',
   'note.created',
   'source.updated',
+  'calendar.updated',
 ]);
 
 // Ambient declaration for process in environments without @types/node
@@ -322,6 +328,35 @@ export class ApiClient {
 
   deleteTask(id: string): Promise<void> {
     return this.delete<void>(`/api/v1/tasks/${id}`);
+  }
+
+  getCalendarStatus(): Promise<CalendarStatus> {
+    return this.get<CalendarStatus>('/api/v1/calendar/status');
+  }
+
+  startGoogleCalendar(): Promise<{ url: string }> {
+    return this.get<{ url: string }>('/api/v1/auth/google/start');
+  }
+
+  getAgenda(day: string, offsetMinutes: number): Promise<AgendaResponse> {
+    return this.get<AgendaResponse>(
+      `/api/v1/calendar/agenda?day=${encodeURIComponent(day)}&offsetMinutes=${offsetMinutes}`,
+    );
+  }
+
+  blockCalendar(data: BlockCalendarRequest): Promise<CalendarEvent> {
+    return this.post<CalendarEvent>('/api/v1/calendar/blocks', data);
+  }
+
+  createMeetingNote(googleEventId: string): Promise<MeetingNoteResponse> {
+    return this.post<MeetingNoteResponse>(
+      `/api/v1/calendar/events/${encodeURIComponent(googleEventId)}/notes`,
+      {},
+    );
+  }
+
+  disconnectCalendar(): Promise<void> {
+    return this.delete<void>('/api/v1/calendar/connection');
   }
 
   getTasksForNote(noteId: string): Promise<Task[]> {

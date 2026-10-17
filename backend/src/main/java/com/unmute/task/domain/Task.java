@@ -39,6 +39,15 @@ public class Task {
     @Column(name = "due_date")
     private Instant dueDate;
 
+    @Column(name = "google_event_id", length = 1024)
+    private String googleEventId;
+
+    @Column(name = "scheduled_start")
+    private Instant scheduledStart;
+
+    @Column(name = "scheduled_end")
+    private Instant scheduledEnd;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -153,5 +162,29 @@ public class Task {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getGoogleEventId() {
+        return googleEventId;
+    }
+
+    public void setGoogleEventId(String googleEventId) {
+        this.googleEventId = googleEventId;
+    }
+
+    public Instant getScheduledStart() {
+        return scheduledStart;
+    }
+
+    public void setScheduledStart(Instant scheduledStart) {
+        this.scheduledStart = scheduledStart;
+    }
+
+    public Instant getScheduledEnd() {
+        return scheduledEnd;
+    }
+
+    public void setScheduledEnd(Instant scheduledEnd) {
+        this.scheduledEnd = scheduledEnd;
     }
 }

@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  * event refetches when it reconnects, and the database stays the source of truth.
  */
 @Service
-public class LiveEventService {
+public class LiveEventService implements LivePublisher {
 
     private static final Logger log = LoggerFactory.getLogger(LiveEventService.class);
 

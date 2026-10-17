@@ -17,7 +17,10 @@ public record TaskDto(
         TaskPriority priority,
         Instant dueDate,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String googleEventId,
+        Instant scheduledStart,
+        Instant scheduledEnd
 ) {
     public static TaskDto fromEntity(Task task) {
         UUID noteId = task.getNote() != null ? task.getNote().getId() : null;
@@ -33,7 +36,10 @@ public record TaskDto(
                 task.getPriority(),
                 task.getDueDate(),
                 task.getCreatedAt(),
-                task.getUpdatedAt()
+                task.getUpdatedAt(),
+                task.getGoogleEventId(),
+                task.getScheduledStart(),
+                task.getScheduledEnd()
         );
     }
 }

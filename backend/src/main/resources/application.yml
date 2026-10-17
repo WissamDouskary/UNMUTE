@@ -54,6 +54,17 @@ unmute:
     access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:900}
     refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:604800}
 
+  web:
+    origin: ${WEB_ORIGIN:http://localhost:3000}
+
+  # Blank client id keeps Calendar disconnected. The encryption key is required only when a client id is set.
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+    redirect-uri: ${GOOGLE_OAUTH_REDIRECT_URI:http://localhost:8080/api/v1/auth/google/callback}
+    token-encryption-key: ${GOOGLE_TOKEN_ENCRYPTION_KEY:}
+    webhook-url: ${GOOGLE_CALENDAR_WEBHOOK_URL:}
+
   jobs:
     worker-enabled: ${JOBS_WORKER_ENABLED:true}
     concurrency: ${JOBS_CONCURRENCY:4}

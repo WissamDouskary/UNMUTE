@@ -5,6 +5,8 @@ import com.unmute.ai.dto.SummarizeResponse;
 import com.unmute.task.domain.TaskPriority;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -23,6 +25,7 @@ public class MockAiProvider implements AiProvider {
     /** "We need three things: first, X" / "Second, we should Y" → "X" / "We should Y". */
     private static final Pattern ORDINAL_LEAD_IN = Pattern.compile("^(?i)(?:[^:]*:\\s*)?(?:first|second|third|fourth|fifth|next|then|also|finally|lastly)(?:ly)?\\s*,\\s*");
     private static final Pattern WORD = Pattern.compile("[\\p{L}\\p{N}]{3,}");
+    private static final Pattern CLOCK_TIME = Pattern.compile("(?i)\\bat\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)\\b");
     private static final Pattern OBLIGATION = Pattern.compile("(?i)\\b(?:todo|needs? to|must|should|have to|has to|let's|action items?)\\b");
     private static final Set<String> ACTION_VERBS = Set.of(
             "implement", "create", "build", "deploy", "fix", "verify", "review", "prepare", "schedule", "test",
@@ -170,6 +173,9 @@ public class MockAiProvider implements AiProvider {
                     "Synthesized from captured content: " + cleanText.substring(0, Math.min(cleanText.length(), 60)) + "...",
                     TaskPriority.MEDIUM,
                     Instant.now().plus(2, ChronoUnit.DAYS),
+                    null,
+                    ExtractedTaskItem.ExtractionKind.TASK,
+                    null,
                     null
             ));
         }
@@ -196,13 +202,38 @@ public class MockAiProvider implements AiProvider {
 
         TaskPriority priority = inferPriority(clean);
         Instant dueDate = inferDueDate(priority);
+        ExtractedTaskItem.ExtractionKind kind = ExtractedTaskItem.ExtractionKind.TASK;
+        Instant startAt = null;
+        Instant endAt = null;
+        Matcher clock = CLOCK_TIME.matcher(clean);
+        if (clock.find()) {
+            kind = ExtractedTaskItem.ExtractionKind.EVENT;
+            dueDate = null;
+            int hour = Integer.parseInt(clock.group(1));
+            int minute = clock.group(2) == null ? 0 : Integer.parseInt(clock.group(2));
+            if ("pm".equalsIgnoreCase(clock.group(3)) && hour < 12) {
+                hour += 12;
+            }
+            if ("am".equalsIgnoreCase(clock.group(3)) && hour == 12) {
+                hour = 0;
+            }
+            LocalDate day = LocalDate.now(ZoneOffset.UTC);
+            if (clean.toLowerCase(Locale.ROOT).contains("tomorrow")) {
+                day = day.plusDays(1);
+            }
+            startAt = day.atTime(Math.min(hour, 23), Math.min(minute, 59)).toInstant(ZoneOffset.UTC);
+            endAt = startAt.plus(1, ChronoUnit.HOURS);
+        }
 
         list.add(new ExtractedTaskItem(
                 clean,
                 defaultDesc,
                 priority,
                 dueDate,
-                null
+                null,
+                kind,
+                startAt,
+                endAt
         ));
     }
 

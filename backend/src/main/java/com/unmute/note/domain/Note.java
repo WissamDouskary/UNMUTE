@@ -57,6 +57,9 @@ public class Note {
     @Column(name = "auto_tagged_at")
     private Instant autoTaggedAt;
 
+    @Column(name = "calendar_event_id", length = 1024)
+    private String calendarEventId;
+
     public Note() {
     }
 
@@ -154,6 +157,14 @@ public class Note {
 
     public void setAutoTaggedAt(Instant autoTaggedAt) {
         this.autoTaggedAt = autoTaggedAt;
+    }
+
+    public String getCalendarEventId() {
+        return calendarEventId;
+    }
+
+    public void setCalendarEventId(String calendarEventId) {
+        this.calendarEventId = calendarEventId;
     }
 
     public Instant getCreatedAt() {

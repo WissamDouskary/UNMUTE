@@ -10,6 +10,7 @@ public final class LiveEventTypes {
     public static final String NOTE_TAG_FAILED = "note.tag-failed";
     public static final String NOTE_CREATED = "note.created";
     public static final String SOURCE_UPDATED = "source.updated";
+    public static final String CALENDAR_UPDATED = "calendar.updated";
 
     private LiveEventTypes() {
     }
@@ -21,4 +22,6 @@ public final class LiveEventTypes {
     public record NoteCreated(UUID noteId, String title, UUID sourceId) {}
 
     public record SourceUpdated(UUID sourceId, String status, UUID noteId) {}
+
+    public record CalendarUpdated(boolean changed) {}
 }

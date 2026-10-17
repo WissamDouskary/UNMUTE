@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /** {@link AiProvider} backed by a real chat model (Claude, GPT or Gemini) with schema-constrained JSON output. */
@@ -48,6 +49,10 @@ public class LlmAiProvider implements AiProvider {
             important or is due within 2 days; LOW if optional or nice-to-have; otherwise MEDIUM.
             - dueDate: YYYY-MM-DD only when the note states or clearly implies a date; resolve relative dates \
             such as "by Friday" against today. Otherwise null.
+            - kind: EVENT when the note gives a clock time ("tomorrow at 3 PM", "at 15:00"). A date with no \
+            clock time stays TASK. Do not invent a clock time.
+            - startAt and endAt: ISO-8601 instants when kind is EVENT. If there is a start and no duration, \
+            endAt is one hour later. Both are null for TASK.
             - At most %d tasks. Return an empty list when there are none.""";
 
     static final String RAG_SYSTEM = """
@@ -89,7 +94,10 @@ public class LlmAiProvider implements AiProvider {
                     "title", JsonSchemas.string("short imperative task title"),
                     "description", JsonSchemas.nullableString("one sentence of context, or null"),
                     "priority", JsonSchemas.enumOf("task priority", "LOW", "MEDIUM", "HIGH", "URGENT"),
-                    "dueDate", JsonSchemas.nullableString("due date as YYYY-MM-DD, or null"))),
+                    "dueDate", JsonSchemas.nullableString("due date as YYYY-MM-DD, or null"),
+                    "kind", JsonSchemas.enumOf("TASK for a date or undated action, EVENT for a clock time", "TASK", "EVENT"),
+                    "startAt", JsonSchemas.nullableString("ISO-8601 start when kind is EVENT, otherwise null"),
+                    "endAt", JsonSchemas.nullableString("ISO-8601 end when kind is EVENT, otherwise null"))),
                     "action items found in the note")));
 
     private static final ObjectNode RAG_SCHEMA = JsonSchemas.object(linked(
@@ -156,12 +164,23 @@ public class LlmAiProvider implements AiProvider {
                 continue;
             }
             String description = task.path("description").isTextual() ? task.path("description").asText().strip() : null;
+            ExtractedTaskItem.ExtractionKind kind = "EVENT".equalsIgnoreCase(task.path("kind").asText("TASK"))
+                    ? ExtractedTaskItem.ExtractionKind.EVENT
+                    : ExtractedTaskItem.ExtractionKind.TASK;
+            Instant startAt = kind == ExtractedTaskItem.ExtractionKind.EVENT ? parseInstant(task.path("startAt")) : null;
+            Instant endAt = kind == ExtractedTaskItem.ExtractionKind.EVENT ? parseInstant(task.path("endAt")) : null;
+            if (startAt != null && endAt == null) {
+                endAt = startAt.plus(1, ChronoUnit.HOURS);
+            }
             tasks.add(new ExtractedTaskItem(
                     title,
                     description == null || description.isEmpty() ? null : description,
                     parsePriority(task.path("priority").asText("")),
-                    parseDueDate(task.path("dueDate")),
-                    null));
+                    kind == ExtractedTaskItem.ExtractionKind.EVENT ? null : parseDueDate(task.path("dueDate")),
+                    null,
+                    kind,
+                    startAt,
+                    endAt));
             if (tasks.size() >= MAX_TASKS) {
                 break;
             }
@@ -293,6 +312,17 @@ public class LlmAiProvider implements AiProvider {
             }
         }
         return TaskPriority.MEDIUM;
+    }
+
+    static Instant parseInstant(JsonNode value) {
+        if (value == null || !value.isTextual() || value.asText().isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(value.asText().strip());
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
     }
 
     static Instant parseDueDate(JsonNode value) {

@@ -16,6 +16,10 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     Optional<Task> findByIdAndUserId(UUID id, UUID userId);
 
+    Optional<Task> findFirstByUserIdAndGoogleEventId(UUID userId, String googleEventId);
+
+    List<Task> findByUserIdAndGoogleEventIdIsNotNull(UUID userId);
+
     List<Task> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     List<Task> findByUserIdAndNoteIdOrderByCreatedAtDesc(UUID userId, UUID noteId);

@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   FileText,
   CheckSquare,
+  Calendar,
   Radio,
   LogOut,
   Menu,
@@ -35,11 +36,13 @@ export const AppShell: React.FC = () => {
     location.pathname.startsWith('/tasks') ||
     location.pathname.startsWith('/sources') ||
     location.pathname.startsWith('/ask') ||
-    location.pathname.startsWith('/graph');
+    location.pathname.startsWith('/graph') ||
+    location.pathname.startsWith('/calendar');
   const getPageTitle = () => {
     if (location.pathname.startsWith('/graph')) return 'Knowledge Graph';
     if (location.pathname.startsWith('/notes')) return 'Notes';
     if (location.pathname.startsWith('/tasks')) return 'Tasks';
+    if (location.pathname.startsWith('/calendar')) return 'Calendar';
     if (location.pathname.startsWith('/sources')) return 'Sources';
     if (location.pathname.startsWith('/ask')) return 'Ask UNMUTE';
     return 'Home';
@@ -82,6 +85,7 @@ export const AppShell: React.FC = () => {
     { name: 'Ask UNMUTE', to: '/ask', icon: Sparkles },
     { name: 'Notes', to: '/notes', icon: FileText },
     { name: 'Tasks', to: '/tasks', icon: CheckSquare },
+    { name: 'Calendar', to: '/calendar', icon: Calendar },
     { name: 'Sources', to: '/sources', icon: Radio },
     { name: 'Graph', to: '/graph', icon: Waypoints },
   ];

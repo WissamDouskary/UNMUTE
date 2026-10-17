@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
+  Calendar,
   CheckSquare,
   FileText,
   Home,
@@ -44,6 +45,7 @@ export function CommandPalette() {
       { id: 'home', label: 'Go to Home', group: 'Navigate', icon: Home, run: () => go('/') },
       { id: 'notes', label: 'Go to Notes', group: 'Navigate', icon: FileText, run: () => go('/notes') },
       { id: 'tasks', label: 'Go to Tasks', group: 'Navigate', icon: CheckSquare, run: () => go('/tasks') },
+      { id: 'calendar', label: 'Go to Calendar', group: 'Navigate', icon: Calendar, run: () => go('/calendar') },
       { id: 'sources', label: 'Go to Sources', group: 'Navigate', icon: Radio, run: () => go('/sources') },
       { id: 'ask', label: 'Go to Ask UNMUTE', group: 'Navigate', icon: Sparkles, run: () => go('/ask') },
       { id: 'graph', label: 'Go to Graph', group: 'Navigate', icon: Waypoints, run: () => go('/graph') },

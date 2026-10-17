@@ -4,6 +4,8 @@ import com.unmute.ai.dto.ExtractedTaskItem;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -72,5 +74,22 @@ class MockAiProviderTest {
         List<String> titles = titles("Notes from the architecture review. The latest test results look stable.");
 
         assertEquals(List.of("Review and follow up on this note"), titles);
+    }
+
+    @Test
+    @DisplayName("A clock time is a proposed event; a dateless action stays a task")
+    void clockTimeIsAnEvent() {
+        ExtractedTaskItem event = provider.extractTasks("Call John tomorrow at 3 PM.").stream()
+                .filter(item -> item.kind() == ExtractedTaskItem.ExtractionKind.EVENT)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(15, event.startAt().atZone(ZoneOffset.UTC).getHour());
+        assertEquals(event.startAt().plus(1, ChronoUnit.HOURS), event.endAt());
+
+        assertEquals(
+                List.of(ExtractedTaskItem.ExtractionKind.TASK),
+                provider.extractTasks("We should integrate the notification system with the calendar API.").stream()
+                        .map(ExtractedTaskItem::kind)
+                        .toList());
     }
 }

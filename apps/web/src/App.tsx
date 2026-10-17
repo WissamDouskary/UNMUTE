@@ -11,6 +11,7 @@ import { TasksPage } from './pages/TasksPage';
 import { SourcesPage } from './pages/SourcesPage';
 import { AskUnmutePage } from './pages/AskUnmutePage';
 import { KnowledgeGraphPage } from './pages/KnowledgeGraphPage';
+import { CalendarPage } from './pages/CalendarPage';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
               <Route index element={<DashboardPage />} />
               <Route path="notes" element={<NotesPage />} />
               <Route path="tasks" element={<TasksPage />} />
+              <Route path="calendar" element={<CalendarPage />} />
               <Route path="ask" element={<AskUnmutePage />} />
               <Route path="graph" element={<KnowledgeGraphPage />} />
               <Route path="sources" element={<SourcesPage />} />

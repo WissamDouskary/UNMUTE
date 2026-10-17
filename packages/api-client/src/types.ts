@@ -95,6 +95,9 @@ export interface Task {
   dueDate?: string | null;
   createdAt: string;
   updatedAt: string;
+  googleEventId?: string | null;
+  scheduledStart?: string | null;
+  scheduledEnd?: string | null;
 }
 
 export interface CreateTaskRequest {
@@ -141,6 +144,9 @@ export interface ExtractedTaskItem {
   priority: TaskPriority;
   dueDate?: string;
   savedTaskId?: string | null;
+  kind?: 'TASK' | 'EVENT';
+  startAt?: string | null;
+  endAt?: string | null;
 }
 
 export interface ExtractTasksRequest {
@@ -297,11 +303,51 @@ export interface SourceUpdatedEvent {
   noteId: string | null;
 }
 
+export interface CalendarUpdatedEvent {
+  changed: boolean;
+}
+
+export interface CalendarAttendee {
+  email?: string | null;
+  name?: string | null;
+}
+
+export interface CalendarEvent {
+  googleEventId: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  attendees: CalendarAttendee[];
+  description?: string | null;
+  htmlLink?: string | null;
+  status: string;
+  taskId?: string | null;
+}
+
+export interface CalendarStatus {
+  connected: boolean;
+}
+
+export interface AgendaResponse {
+  events: CalendarEvent[];
+}
+
+export interface BlockCalendarRequest {
+  taskId: string;
+  start: string;
+  end: string;
+}
+
+export interface MeetingNoteResponse {
+  noteId: string;
+}
+
 export type LiveEvent =
   | { type: 'note.tagged'; data: NoteTaggedEvent }
   | { type: 'note.tag-failed'; data: NoteTagFailedEvent }
   | { type: 'note.created'; data: NoteCreatedEvent }
-  | { type: 'source.updated'; data: SourceUpdatedEvent };
+  | { type: 'source.updated'; data: SourceUpdatedEvent }
+  | { type: 'calendar.updated'; data: CalendarUpdatedEvent };
 
 export type LiveEventType = LiveEvent['type'];
 
