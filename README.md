@@ -99,6 +99,15 @@ cd backend
 
 > **Note**: Backend requires PostgreSQL. Start it first with `docker compose up db -d`.
 
+The default test command excludes the PostgreSQL row-lock test. That test talks only to a disposable database on `127.0.0.1:5433` and fails, rather than skipping, when that database is down:
+
+```bash
+docker compose -p unmute-it -f docker-compose.it.yml up -d --wait
+cd backend
+./mvnw.cmd test -Ppostgres-it
+docker compose -p unmute-it -f docker-compose.it.yml down
+```
+
 ### Web (on host)
 
 ```bash

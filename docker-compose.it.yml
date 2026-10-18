@@ -1,0 +1,20 @@
+# Disposable PostgreSQL for the row-lock integration test.
+# No volume: the data disappears when the container is removed.
+# Bind only to localhost:5433 so this cannot be the host database on 5432
+# or the Compose app database.
+services:
+  db-it:
+    image: pgvector/pgvector:pg16
+    container_name: unmute-db-it
+    environment:
+      POSTGRES_DB: unmute_it
+      POSTGRES_USER: unmute_it
+      POSTGRES_PASSWORD: unmute-it-only
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unmute_it -d unmute_it"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
