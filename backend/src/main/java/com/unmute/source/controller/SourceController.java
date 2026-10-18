@@ -2,7 +2,9 @@ package com.unmute.source.controller;
 
 import com.unmute.auth.security.UserPrincipal;
 import com.unmute.common.exception.InvalidTokenException;
+import com.unmute.source.dto.ApproveCaptureRequest;
 import com.unmute.source.dto.SourceDto;
+import com.unmute.source.service.CaptureReviewService;
 import com.unmute.source.service.SourceService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -20,9 +22,11 @@ import java.util.UUID;
 public class SourceController {
 
     private final SourceService sourceService;
+    private final CaptureReviewService captureReviewService;
 
-    public SourceController(SourceService sourceService) {
+    public SourceController(SourceService sourceService, CaptureReviewService captureReviewService) {
         this.sourceService = sourceService;
+        this.captureReviewService = captureReviewService;
     }
 
     private UserPrincipal requirePrincipal(UserPrincipal principal) {
@@ -74,6 +78,16 @@ public class SourceController {
         requirePrincipal(principal);
         sourceService.deleteSource(principal.getId(), id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<SourceDto> approveCapture(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID id,
+            @RequestBody ApproveCaptureRequest request
+    ) {
+        requirePrincipal(principal);
+        return ResponseEntity.ok(captureReviewService.approve(principal.getId(), id, request));
     }
 
     @PostMapping("/{id}/retry")

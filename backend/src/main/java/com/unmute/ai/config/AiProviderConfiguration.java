@@ -12,6 +12,7 @@ import com.unmute.ai.provider.LlmAiProvider;
 import com.unmute.ai.provider.MockAiProvider;
 import com.unmute.ai.provider.MockEmbeddingProvider;
 import com.unmute.ai.provider.OpenAiEmbeddingProvider;
+import com.unmute.source.service.CaptureSuggester;
 import com.unmute.source.service.GeminiTranscriptionService;
 import com.unmute.source.service.MockTranscriptionProvider;
 import com.unmute.source.service.OpenAiTranscriptionService;
@@ -57,16 +58,14 @@ public class AiProviderConfiguration {
     }
 
     @Bean
+    CaptureSuggester captureSuggester(AiProperties properties, AiClients clients, ObjectMapper mapper) {
+        boolean mock = "mock".equals(normalize(properties.llmProvider()));
+        return new CaptureSuggester(selectLlm(properties, clients), mock ? null : clients.gemini(), mapper);
+    }
+
+    @Bean
     AiProvider aiProvider(AiProperties properties, AiClients clients) {
-        String choice = normalize(properties.llmProvider());
-        LlmClient llm = switch (choice) {
-            case "auto" -> first(clients.anthropic(), clients.openAi(), clients.gemini());
-            case "anthropic" -> require(clients.anthropic(), "unmute.ai.llm-provider=anthropic", "ANTHROPIC_API_KEY");
-            case "openai" -> require(clients.openAi(), "unmute.ai.llm-provider=openai", "OPENAI_API_KEY");
-            case "gemini" -> require(clients.gemini(), "unmute.ai.llm-provider=gemini", "GEMINI_API_KEY");
-            case "mock" -> null;
-            default -> throw unknown("llm-provider", choice, "auto, anthropic, openai, gemini, mock");
-        };
+        LlmClient llm = selectLlm(properties, clients);
         if (llm == null) {
             log.info("AI text model: offline mock (set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY to use a real model)");
             return new MockAiProvider();
@@ -130,6 +129,18 @@ public class AiProviderConfiguration {
                 yield new MockTranscriptionProvider();
             }
             default -> throw unknown("transcription-provider", choice, "auto, openai, gemini, mock");
+        };
+    }
+
+    private static LlmClient selectLlm(AiProperties properties, AiClients clients) {
+        String choice = normalize(properties.llmProvider());
+        return switch (choice) {
+            case "auto" -> first(clients.anthropic(), clients.openAi(), clients.gemini());
+            case "anthropic" -> require(clients.anthropic(), "unmute.ai.llm-provider=anthropic", "ANTHROPIC_API_KEY");
+            case "openai" -> require(clients.openAi(), "unmute.ai.llm-provider=openai", "OPENAI_API_KEY");
+            case "gemini" -> require(clients.gemini(), "unmute.ai.llm-provider=gemini", "GEMINI_API_KEY");
+            case "mock" -> null;
+            default -> throw unknown("llm-provider", choice, "auto, anthropic, openai, gemini, mock");
         };
     }
 

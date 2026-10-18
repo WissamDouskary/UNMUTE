@@ -6,6 +6,7 @@ public final class JobTypes {
     public static final String EMBED_NOTE = "EMBED_NOTE";
     public static final String TRANSCRIBE_SOURCE = "TRANSCRIBE_SOURCE";
     public static final String AUTO_TAG_NOTE = "AUTO_TAG_NOTE";
+    public static final String EXTRACT_CAPTURE = "EXTRACT_CAPTURE";
 
     private JobTypes() {
     }

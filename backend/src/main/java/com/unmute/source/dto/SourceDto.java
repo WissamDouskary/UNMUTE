@@ -1,6 +1,7 @@
 package com.unmute.source.dto;
 
 import com.unmute.source.domain.Source;
+import com.unmute.source.service.ReviewPayloads;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -20,6 +21,7 @@ public class SourceDto {
     private String noteTitle;
     private Instant createdAt;
     private Instant updatedAt;
+    private ReviewPayload reviewPayload;
 
     public SourceDto() {
     }
@@ -43,7 +45,7 @@ public class SourceDto {
     }
 
     public static SourceDto fromEntity(Source source) {
-        return new SourceDto(
+        SourceDto dto = new SourceDto(
                 source.getId(),
                 source.getFilename(),
                 source.getOriginalName(),
@@ -58,6 +60,8 @@ public class SourceDto {
                 source.getCreatedAt(),
                 source.getUpdatedAt()
         );
+        dto.reviewPayload = ReviewPayloads.read(source.getReviewPayload());
+        return dto;
     }
 
     public UUID getId() { return id; }
@@ -73,4 +77,5 @@ public class SourceDto {
     public String getNoteTitle() { return noteTitle; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public ReviewPayload getReviewPayload() { return reviewPayload; }
 }

@@ -3,6 +3,8 @@ package com.unmute.source.domain;
 import com.unmute.auth.domain.User;
 import com.unmute.note.domain.Note;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -47,6 +49,11 @@ public class Source {
 
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
+
+    /** Suggested summary, tasks, and tags. Nothing here is a saved note until the user approves it. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "review_payload", columnDefinition = "jsonb")
+    private String reviewPayload;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -166,6 +173,14 @@ public class Source {
 
     public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
+    }
+
+    public String getReviewPayload() {
+        return reviewPayload;
+    }
+
+    public void setReviewPayload(String reviewPayload) {
+        this.reviewPayload = reviewPayload;
     }
 
     public Instant getCreatedAt() {

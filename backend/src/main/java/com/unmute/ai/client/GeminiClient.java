@@ -87,7 +87,36 @@ public class GeminiClient implements LlmClient {
                 .body(body)
                 .retrieve()
                 .body(JsonNode.class));
+        return readCandidate(response);
+    }
 
+    /**
+     * Structured JSON for a PDF or image. The file bytes are sent as inline data and are never logged.
+     */
+    public JsonNode completeJsonWithFile(byte[] data, String mimeType, String system, String user, ObjectNode schema) {
+        ObjectNode body = mapper.createObjectNode();
+        body.putObject("systemInstruction").putArray("parts").addObject().put("text", system);
+        ArrayNode parts = body.putArray("contents").addObject().put("role", "user").putArray("parts");
+        parts.addObject().put("text", user);
+        ObjectNode inline = parts.addObject().putObject("inlineData");
+        inline.put("mimeType", mimeType);
+        inline.put("data", Base64.getEncoder().encodeToString(data));
+        ObjectNode config = body.putObject("generationConfig");
+        config.put("temperature", 0.1);
+        config.put("maxOutputTokens", properties.maxCompletionTokens());
+        config.put("responseMimeType", "application/json");
+        config.set("responseSchema", toGeminiSchema(schema));
+
+        JsonNode response = call("Gemini", () -> nativeJson.post()
+                .uri("/models/{model}:generateContent", properties.chatModel())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(JsonNode.class));
+        return readCandidate(response);
+    }
+
+    private JsonNode readCandidate(JsonNode response) {
         JsonNode candidate = response.path("candidates").path(0);
         String finish = candidate.path("finishReason").asText("");
         if ("SAFETY".equals(finish) || "RECITATION".equals(finish) || "PROHIBITED_CONTENT".equals(finish)) {

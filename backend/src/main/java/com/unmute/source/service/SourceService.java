@@ -4,6 +4,7 @@ import com.unmute.auth.domain.User;
 import com.unmute.auth.repository.UserRepository;
 import com.unmute.common.exception.ConflictException;
 import com.unmute.common.exception.ResourceNotFoundException;
+import com.unmute.common.exception.UnsupportedMediaTypeException;
 import com.unmute.source.domain.Source;
 import com.unmute.source.domain.SourceStatus;
 import com.unmute.jobs.JobQueue;
@@ -51,15 +52,18 @@ public class SourceService {
 
         String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "recording.webm";
         String fileType = file.getContentType() != null ? file.getContentType() : "audio/webm";
+        if (!CaptureKinds.supported(fileType)) {
+            throw new UnsupportedMediaTypeException("This file type is not supported. Use audio, an image, a PDF, or plain text.");
+        }
         long fileSize = file.getSize();
 
         String storedFilename = fileStorageService.store(file);
         deleteFileIfRolledBack(storedFilename);
 
         Source source = sourceRepository.save(new Source(user, storedFilename, originalName, fileType, fileSize));
-        log.info("Source uploaded: {} ({}), queueing transcription", originalName, source.getId());
+        log.info("Source uploaded: {} ({}), queueing capture", originalName, source.getId());
 
-        jobQueue.enqueue(TranscriptionJobHandler.jobFor(source.getId()));
+        jobQueue.enqueue(jobFor(source));
         return SourceDto.fromEntity(source);
     }
 
@@ -101,8 +105,14 @@ public class SourceService {
         source.setErrorMessage(null);
         source = sourceRepository.save(source);
 
-        jobQueue.enqueue(TranscriptionJobHandler.jobFor(source.getId()));
+        jobQueue.enqueue(jobFor(source));
         return SourceDto.fromEntity(source);
+    }
+
+    private static com.unmute.jobs.JobSpec jobFor(Source source) {
+        return CaptureKinds.audio(source.getFileType())
+                ? TranscriptionJobHandler.jobFor(source.getId())
+                : CaptureExtractJobHandler.jobFor(source.getId());
     }
 
     /** The file is irreversible, so it only goes once the row deletion is durable. */
