@@ -20,6 +20,14 @@ function startOfLocalDay(day: Date) {
   return new Date(day.getFullYear(), day.getMonth(), day.getDate());
 }
 
+function initialDay(param: string | null): Date {
+  if (param && /^\d{4}-\d{2}-\d{2}$/.test(param)) {
+    const [year, month, date] = param.split('-').map(Number);
+    if (year && month && date) return new Date(year, month - 1, date);
+  }
+  return startOfLocalDay(new Date());
+}
+
 const press =
   'transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700';
 
@@ -27,7 +35,7 @@ export function CalendarPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
-  const [day, setDay] = useState(() => startOfLocalDay(new Date()));
+  const [day, setDay] = useState(() => initialDay(params.get('day')));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tasksOpen, setTasksOpen] = useState(false);
   const [hoverSlot, setHoverSlot] = useState<number | null>(null);
