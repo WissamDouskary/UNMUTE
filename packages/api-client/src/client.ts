@@ -39,6 +39,7 @@ import type {
   LiveEventHandlers,
   CalendarStatus,
   AgendaResponse,
+  BriefingResponse,
   CalendarEvent,
   BlockCalendarRequest,
   MeetingNoteResponse,
@@ -338,6 +339,10 @@ export class ApiClient {
 
   startGoogleCalendar(): Promise<{ url: string }> {
     return this.get<{ url: string }>('/api/v1/auth/google/start');
+  }
+
+  getBriefing(offsetMinutes: number): Promise<BriefingResponse> {
+    return this.get<BriefingResponse>(`/api/v1/briefing?offsetMinutes=${offsetMinutes}`);
   }
 
   getAgenda(day: string, offsetMinutes: number): Promise<AgendaResponse> {

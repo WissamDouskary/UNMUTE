@@ -367,6 +367,46 @@ export interface AgendaResponse {
   events: CalendarEvent[];
 }
 
+export interface BriefingTask {
+  id: string;
+  title: string;
+  priority: TaskPriority;
+  dueDate?: string | null;
+  noteId?: string | null;
+  noteTitle?: string | null;
+}
+
+export interface BriefingDeadline {
+  googleEventId: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+}
+
+export interface BriefingCalendar {
+  connected: boolean;
+  deadlines: BriefingDeadline[];
+  deadlineCount: number;
+}
+
+export interface BriefingAttention {
+  kind: 'capture' | 'note';
+  id: string;
+  title: string;
+  reason: 'Ready for review' | 'Failed' | 'No task yet';
+}
+
+export interface BriefingResponse {
+  focus: BriefingTask | null;
+  nextTasks: BriefingTask[];
+  openCount: number;
+  dueTodayCount: number;
+  calendar: BriefingCalendar;
+  attention: BriefingAttention[];
+  readyCount: number;
+  readingCount: number;
+}
+
 export interface BlockCalendarRequest {
   taskId: string;
   start: string;
