@@ -74,7 +74,7 @@ class CaptureReviewServiceTest {
         User user = user(userId);
         Source source = readySource(user, sourceId);
         AtomicReference<Note> savedNote = new AtomicReference<>();
-        when(sourceRepository.findByIdAndUserId(sourceId, userId)).thenReturn(Optional.of(source));
+        when(sourceRepository.lockByIdAndUserId(sourceId, userId)).thenReturn(Optional.of(source));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(noteRepository.save(any())).thenAnswer(invocation -> {
             Note note = invocation.getArgument(0);
@@ -112,7 +112,7 @@ class CaptureReviewServiceTest {
         UUID noteId = UUID.randomUUID();
         User user = user(userId);
         Source source = readySource(user, sourceId);
-        when(sourceRepository.findByIdAndUserId(sourceId, userId)).thenReturn(Optional.of(source));
+        when(sourceRepository.lockByIdAndUserId(sourceId, userId)).thenReturn(Optional.of(source));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(noteRepository.save(any())).thenAnswer(invocation -> {
             Note note = invocation.getArgument(0);
@@ -133,7 +133,7 @@ class CaptureReviewServiceTest {
     void otherUsersSourceIsNotFound() {
         UUID userId = UUID.randomUUID();
         UUID sourceId = UUID.randomUUID();
-        when(sourceRepository.findByIdAndUserId(sourceId, userId)).thenReturn(Optional.empty());
+        when(sourceRepository.lockByIdAndUserId(sourceId, userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.approve(userId, sourceId, new ApproveCaptureRequest(
                 "Title", "Body", List.of(), List.of())))

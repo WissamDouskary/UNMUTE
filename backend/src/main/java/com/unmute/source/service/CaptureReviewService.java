@@ -70,7 +70,7 @@ public class CaptureReviewService {
             throw new BadRequestException("The title cannot exceed 255 characters.");
         }
 
-        Source source = sourceRepository.findByIdAndUserId(sourceId, userId)
+        Source source = sourceRepository.lockByIdAndUserId(sourceId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Source not found with id: " + sourceId));
         if (source.getStatus() == SourceStatus.COMPLETED && source.getNote() != null) {
             return SourceDto.fromEntity(source);
