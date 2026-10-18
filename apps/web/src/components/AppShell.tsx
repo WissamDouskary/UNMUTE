@@ -208,6 +208,17 @@ export const AppShell: React.FC = () => {
         <header className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950 px-4 pt-[env(safe-area-inset-top)] md:hidden">
           <h2 className="min-w-0 truncate text-sm font-medium tracking-tight text-zinc-200">{pageTitle}</h2>
           <div className="flex items-center">
+            <NavLink
+              to="/inbox"
+              className={({ isActive }) =>
+                `flex min-h-11 items-center gap-1.5 px-2 text-xs font-medium transition-all duration-200 ease-out active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-zinc-700 ${
+                  isActive ? 'text-zinc-100' : 'text-zinc-400'
+                }`
+              }
+            >
+              <Inbox className="h-4 w-4" />
+              Inbox
+            </NavLink>
             <button
               type="button"
               aria-label="Search"
