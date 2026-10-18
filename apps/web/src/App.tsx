@@ -9,6 +9,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { NotesPage } from './pages/NotesPage';
 import { TasksPage } from './pages/TasksPage';
 import { SourcesPage } from './pages/SourcesPage';
+import { InboxPage } from './pages/InboxPage';
+import { ShareTargetPage } from './pages/ShareTargetPage';
 import { AskUnmutePage } from './pages/AskUnmutePage';
 import { KnowledgeGraphPage } from './pages/KnowledgeGraphPage';
 import { CalendarPage } from './pages/CalendarPage';
@@ -34,6 +36,9 @@ function App() {
               <Route path="ask" element={<AskUnmutePage />} />
               <Route path="graph" element={<KnowledgeGraphPage />} />
               <Route path="sources" element={<SourcesPage />} />
+              <Route path="inbox" element={<InboxPage />} />
+              <Route path="inbox/:sourceId" element={<InboxPage />} />
+              <Route path="share-target" element={<ShareTargetPage />} />
               <Route path="projects" element={<Navigate to="/" replace />} />
               <Route path="settings" element={<Navigate to="/" replace />} />
             </Route>

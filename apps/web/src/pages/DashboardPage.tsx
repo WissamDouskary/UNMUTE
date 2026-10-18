@@ -71,7 +71,7 @@ export const DashboardPage: React.FC = () => {
     .sort((a, b) => dueRank(a) - dueRank(b))
     .slice(0, 6);
   const recent = [...notes].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')).slice(0, 6);
-  const running = sources.filter((source) => source.status === 'PENDING' || source.status === 'TRANSCRIBING');
+  const running = sources.filter((source) => source.status === 'PENDING' || source.status === 'TRANSCRIBING' || source.status === 'EXTRACTING');
   const failed = sources.filter((source) => source.status === 'FAILED');
   const workflows = [...running, ...failed].slice(0, 5);
   const loading = notesQuery.isLoading || tasksQuery.isLoading;
@@ -258,7 +258,7 @@ function TaskRow({ task, onOpen }: { task: Task; onOpen: (task: Task) => void })
 }
 
 function WorkflowRow({ source }: { source: Source }) {
-  const live = source.status === 'PENDING' || source.status === 'TRANSCRIBING';
+  const live = source.status === 'PENDING' || source.status === 'TRANSCRIBING' || source.status === 'EXTRACTING';
   return (
     <li>
       <Link to="/sources" className="flex items-center gap-3 py-2 hover:bg-zinc-800/50 -mx-2 px-2 rounded-lg transition-all duration-200 ease-out active:scale-[0.98]">

@@ -160,7 +160,25 @@ export interface ExtractTasksResponse {
   count: number;
 }
 
-export type SourceStatus = 'PENDING' | 'TRANSCRIBING' | 'COMPLETED' | 'FAILED';
+export type SourceStatus = 'PENDING' | 'TRANSCRIBING' | 'EXTRACTING' | 'READY' | 'COMPLETED' | 'FAILED';
+
+export interface ReviewTask {
+  title: string;
+  description: string;
+}
+
+export interface ReviewPayload {
+  summary: string;
+  tasks: ReviewTask[];
+  tags: string[];
+}
+
+export interface ApproveCaptureRequest {
+  title: string;
+  body: string;
+  tasks: ReviewTask[];
+  tags: string[];
+}
 
 export interface Source {
   id: string;
@@ -172,6 +190,7 @@ export interface Source {
   transcript?: string | null;
   durationSeconds?: number | null;
   errorMessage?: string | null;
+  reviewPayload?: ReviewPayload | null;
   noteId?: string | null;
   noteTitle?: string | null;
   createdAt: string;

@@ -13,6 +13,7 @@ import {
   Waypoints,
   Search,
   Ellipsis,
+  Inbox,
 } from 'lucide-react';
 import { CommandPalette, OPEN_PALETTE_EVENT } from './CommandPalette';
 import { AskChatProvider } from '../context/AskChatContext';
@@ -45,6 +46,8 @@ export const AppShell: React.FC = () => {
     if (location.pathname.startsWith('/tasks')) return 'Tasks';
     if (location.pathname.startsWith('/calendar')) return 'Calendar';
     if (location.pathname.startsWith('/sources')) return 'Sources';
+    if (location.pathname.startsWith('/inbox')) return 'Inbox';
+    if (location.pathname.startsWith('/share-target')) return 'Inbox';
     if (location.pathname.startsWith('/ask')) return 'Ask UNMUTE';
     return 'Home';
   };
@@ -88,6 +91,7 @@ export const AppShell: React.FC = () => {
     { name: 'Tasks', to: '/tasks', icon: CheckSquare },
     { name: 'Calendar', to: '/calendar', icon: Calendar },
     { name: 'Sources', to: '/sources', icon: Radio },
+    { name: 'Inbox', to: '/inbox', icon: Inbox },
     { name: 'Graph', to: '/graph', icon: Waypoints },
   ];
 
@@ -299,7 +303,7 @@ export const AppShell: React.FC = () => {
             <div className={sheetHandleClass} aria-hidden />
             <nav className="flex flex-col px-2 py-2" aria-label="More">
               {navItems
-                .filter((item) => item.to === '/calendar' || item.to === '/sources' || item.to === '/graph')
+                .filter((item) => item.to === '/calendar' || item.to === '/sources' || item.to === '/inbox' || item.to === '/graph')
                 .map((item) => {
                   const Icon = item.icon;
                   return (

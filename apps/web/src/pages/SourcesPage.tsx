@@ -58,7 +58,7 @@ export const SourcesPage: React.FC = () => {
     refetchInterval: (query) => {
       const currentSources = query.state.data;
       const hasActive = currentSources?.some(
-        (s) => s.status === 'PENDING' || s.status === 'TRANSCRIBING'
+        (s) => s.status === 'PENDING' || s.status === 'TRANSCRIBING' || s.status === 'EXTRACTING'
       );
       return hasActive ? 1500 : 8000;
     },
@@ -331,7 +331,7 @@ export const SourcesPage: React.FC = () => {
   // Calculate stats
   const totalCount = sources.length;
   const transcribingCount = sources.filter(
-    (s) => s.status === 'PENDING' || s.status === 'TRANSCRIBING'
+    (s) => s.status === 'PENDING' || s.status === 'TRANSCRIBING' || s.status === 'EXTRACTING'
   ).length;
   const completedCount = sources.filter((s) => s.status === 'COMPLETED').length;
   const totalSeconds = sources.reduce((acc, curr) => acc + (curr.durationSeconds || 0), 0);
@@ -671,7 +671,7 @@ export const SourcesPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
               {filteredSources.map((source) => {
                 const isTranscribing =
-                  source.status === 'PENDING' || source.status === 'TRANSCRIBING';
+                  source.status === 'PENDING' || source.status === 'TRANSCRIBING' || source.status === 'EXTRACTING';
                 const isFailed = source.status === 'FAILED';
                 const isCompleted = source.status === 'COMPLETED';
                 const isSelected = selectedSource?.id === source.id;
@@ -888,7 +888,8 @@ export const SourcesPage: React.FC = () => {
                     <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
                   )}
                   {(selectedSource.status === 'PENDING' ||
-                    selectedSource.status === 'TRANSCRIBING') && (
+                    selectedSource.status === 'TRANSCRIBING' ||
+                    selectedSource.status === 'EXTRACTING') && (
                     <Loader2 className="w-5 h-5 animate-spin text-amber-400 shrink-0" />
                   )}
                   <div>
@@ -897,13 +898,27 @@ export const SourcesPage: React.FC = () => {
                     </span>
                     <span className="text-xs text-zinc-400">
                       {selectedSource.status === 'COMPLETED'
-                        ? 'Successfully transcribed and synchronized into Notes'
+                        ? 'Saved to notes'
+                        : selectedSource.status === 'READY'
+                        ? 'Ready for review. Nothing is saved until you approve it.'
                         : selectedSource.status === 'FAILED'
-                        ? selectedSource.errorMessage || 'Transcription encountered an issue'
-                        : 'Currently transcribing with AI engine...'}
+                        ? selectedSource.errorMessage || 'This capture could not be read'
+                        : selectedSource.status === 'EXTRACTING'
+                        ? 'Reading this capture…'
+                        : 'Reading this capture…'}
                     </span>
                   </div>
                 </div>
+
+                {selectedSource.status === 'READY' && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/inbox/${selectedSource.id}`)}
+                    className="px-3 py-1.5 rounded-lg bg-zinc-100 text-zinc-950 text-xs font-semibold cursor-pointer"
+                  >
+                    Review
+                  </button>
+                )}
 
                 {selectedSource.status === 'FAILED' && (
                   <button

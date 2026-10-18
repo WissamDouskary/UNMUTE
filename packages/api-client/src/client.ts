@@ -24,6 +24,7 @@ import type {
   ExtractTasksRequest,
   ExtractTasksResponse,
   Source,
+  ApproveCaptureRequest,
   SemanticSearchResult,
   SemanticSearchRequest,
   AskRequest,
@@ -519,6 +520,10 @@ export class ApiClient {
 
   retrySource(id: string): Promise<Source> {
     return this.post<Source>(`/api/v1/sources/${id}/retry`);
+  }
+
+  approveCapture(id: string, body: ApproveCaptureRequest): Promise<Source> {
+    return this.post<Source>(`/api/v1/sources/${id}/approve`, body);
   }
 
   // --- Semantic Search & Ask UNMUTE (RAG) Endpoints ---

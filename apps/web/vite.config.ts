@@ -27,8 +27,25 @@ export default defineConfig({
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
+        share_target: {
+          action: '/share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            title: 'title',
+            text: 'text',
+            url: 'url',
+            files: [
+              {
+                name: 'media',
+                accept: ['image/*', 'application/pdf', 'text/plain', 'audio/*'],
+              },
+            ],
+          },
+        },
       },
       workbox: {
+        importScripts: ['share-target-sw.js'],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api/, /^\/actuator/],
@@ -55,6 +72,10 @@ export default defineConfig({
             },
           },
         ],
+      },
+      devOptions: {
+        enabled: true,
+        type: 'classic',
       },
     }),
   ],
