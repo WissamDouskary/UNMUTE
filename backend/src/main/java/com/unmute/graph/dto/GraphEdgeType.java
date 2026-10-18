@@ -6,5 +6,7 @@ public enum GraphEdgeType {
     /** sources.note_id -> notes.id */
     SOURCE_OF_NOTE,
     /** note_tags.note_id -> notes.id */
-    NOTE_TAGGED
+    NOTE_TAGGED,
+    /** Accepted suggestion: two notes share a tag and the user confirmed the link. */
+    RELATED_TO
 }

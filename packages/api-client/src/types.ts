@@ -264,7 +264,7 @@ export interface ChatTurn {
 
 export type GraphNodeType = 'NOTE' | 'TASK' | 'SOURCE' | 'TAG';
 
-export type GraphEdgeType = 'TASK_OF_NOTE' | 'SOURCE_OF_NOTE' | 'NOTE_TAGGED';
+export type GraphEdgeType = 'TASK_OF_NOTE' | 'SOURCE_OF_NOTE' | 'NOTE_TAGGED' | 'RELATED_TO';
 
 export interface GraphNode {
   /** Type-prefixed key, e.g. `note:<uuid>` or `tag:<name>`. */
@@ -284,6 +284,22 @@ export interface GraphEdge {
   source: string;
   target: string;
   type: GraphEdgeType;
+  /** EXPLICIT for saved foreign keys. ACCEPTED for a reviewed suggestion. */
+  origin?: string | null;
+}
+
+export interface GraphSuggestion {
+  id: string;
+  sourceKey: string;
+  targetKey: string;
+  sourceLabel?: string | null;
+  targetLabel?: string | null;
+  relationType: string;
+  explanation: string;
+  evidence?: string | null;
+  origin: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  createdAt: string;
 }
 
 export interface GraphTopology {

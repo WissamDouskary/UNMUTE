@@ -25,6 +25,8 @@ public class GraphRepository {
 
     public record NoteTagRow(UUID noteId, String tag) {}
 
+    public record LinkRow(UUID id, String sourceKey, String targetKey, String relationType) {}
+
     private final JdbcTemplate jdbcTemplate;
 
     public GraphRepository(JdbcTemplate jdbcTemplate) {
@@ -88,6 +90,20 @@ public class GraphRepository {
                 (UUID) rs.getObject("note_id"),
                 rs.getString("tag")
         ), userId, includeArchived);
+    }
+
+    public List<LinkRow> findAcceptedLinks(UUID userId) {
+        String sql = """
+            SELECT id, source_key, target_key, relation_type
+            FROM graph_links
+            WHERE user_id = ?
+            """;
+        return jdbcTemplate.query(sql, (rs, i) -> new LinkRow(
+                (UUID) rs.getObject("id"),
+                rs.getString("source_key"),
+                rs.getString("target_key"),
+                rs.getString("relation_type")
+        ), userId);
     }
 
     private static Instant toInstant(ResultSet rs, String column) throws SQLException {

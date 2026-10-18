@@ -45,6 +45,7 @@ export type {
   GraphEdge,
   GraphTopology,
   GraphTopologyParams,
+  GraphSuggestion,
   NoteTaggedEvent,
   NoteTagFailedEvent,
   NoteCreatedEvent,

@@ -30,6 +30,11 @@ public class GraphService {
             nodes.add(new GraphNodeDto(key, note.id(), GraphNodeType.NOTE, note.title(), status, null, note.updatedAt()));
         }
 
+        for (GraphRepository.LinkRow link : graphRepository.findAcceptedLinks(userId)) {
+            if (!noteKeys.contains(link.sourceKey()) || !noteKeys.contains(link.targetKey())) continue;
+            edges.add(new GraphEdgeDto(link.id().toString(), link.sourceKey(), link.targetKey(), GraphEdgeType.RELATED_TO, "ACCEPTED"));
+        }
+
         for (GraphRepository.TaskRow task : graphRepository.findTasks(userId)) {
             String key = "task:" + task.id();
             String status = task.completed() ? "COMPLETED" : "OPEN";
@@ -55,7 +60,7 @@ public class GraphService {
                 String tagKey = "tag:" + normalized;
                 String edgeId = GraphEdgeType.NOTE_TAGGED + ":" + noteKey + "->" + tagKey;
                 if (tagEdgeIds.add(edgeId)) {
-                    edges.add(new GraphEdgeDto(edgeId, noteKey, tagKey, GraphEdgeType.NOTE_TAGGED));
+                    edges.add(new GraphEdgeDto(edgeId, noteKey, tagKey, GraphEdgeType.NOTE_TAGGED, "EXPLICIT"));
                 }
             }
             tagLabels.forEach((normalized, label) ->
@@ -74,6 +79,6 @@ public class GraphService {
         if (noteId == null) return;
         String noteKey = noteKey(noteId);
         if (!noteKeys.contains(noteKey)) return;
-        edges.add(new GraphEdgeDto(type + ":" + childKey + "->" + noteKey, childKey, noteKey, type));
+        edges.add(new GraphEdgeDto(type + ":" + childKey + "->" + noteKey, childKey, noteKey, type, "EXPLICIT"));
     }
 }

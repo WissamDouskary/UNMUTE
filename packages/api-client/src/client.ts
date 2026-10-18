@@ -34,6 +34,7 @@ import type {
   ChatTurn,
   GraphTopology,
   GraphTopologyParams,
+  GraphSuggestion,
   LiveEvent,
   LiveEventHandlers,
   CalendarStatus,
@@ -575,6 +576,22 @@ export class ApiClient {
     const queryString = query.toString();
     const path = queryString ? `/api/v1/graph/topology?${queryString}` : '/api/v1/graph/topology';
     return this.get<GraphTopology>(path);
+  }
+
+  listGraphSuggestions(): Promise<GraphSuggestion[]> {
+    return this.get<GraphSuggestion[]>('/api/v1/graph/suggestions');
+  }
+
+  generateGraphSuggestions(): Promise<GraphSuggestion[]> {
+    return this.post<GraphSuggestion[]>('/api/v1/graph/suggestions/generate');
+  }
+
+  acceptGraphSuggestion(id: string): Promise<GraphSuggestion> {
+    return this.post<GraphSuggestion>(`/api/v1/graph/suggestions/${id}/accept`);
+  }
+
+  rejectGraphSuggestion(id: string): Promise<GraphSuggestion> {
+    return this.post<GraphSuggestion>(`/api/v1/graph/suggestions/${id}/reject`);
   }
 }
 

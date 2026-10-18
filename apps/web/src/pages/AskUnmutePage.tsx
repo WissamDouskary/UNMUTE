@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Database,
@@ -43,6 +43,14 @@ export const AskUnmutePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'chat' | 'search'>('chat');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pending = chat.isAsking || chat.isSearching;
+
+  useEffect(() => {
+    const seed = sessionStorage.getItem('unmute-ask-seed');
+    if (!seed) return;
+    chat.setInput(seed);
+    const timer = window.setTimeout(() => sessionStorage.removeItem('unmute-ask-seed'), 0);
+    return () => window.clearTimeout(timer);
+  }, [chat]);
 
   const beginNewChat = () => {
     chat.startNewChat();

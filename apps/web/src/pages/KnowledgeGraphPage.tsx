@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d';
 import { forceCenter, forceCollide } from 'd3-force-3d';
 import {
   AlertCircle,
   Archive,
-  ArrowUpRight,
   CheckSquare,
   FileText,
   Hash,
   Loader2,
   Maximize2,
+  Minus,
+  Plus,
   Radio,
   RefreshCw,
   Search,
@@ -20,9 +21,11 @@ import {
 } from 'lucide-react';
 import { apiClient, type GraphEdgeType, type GraphNode, type GraphNodeType } from '@unmute/api-client';
 import { cn } from '../lib/utils';
+import { GraphInspector } from './graph/GraphInspector';
+import { EDGE_META, buildInsights, neighborhood, searchNodes } from './graph/graphIntelligence';
 
 type NodeData = GraphNode & { degree: number };
-type LinkData = { id: string; type: GraphEdgeType };
+type LinkData = { id: string; type: GraphEdgeType; origin?: string };
 type GNode = NodeObject<NodeData>;
 type GLink = LinkObject<NodeData, LinkData>;
 
@@ -84,7 +87,7 @@ function createClusterForce(strength: number) {
   return force;
 }
 
-const NODE_GLOW_PX = 15;
+const NODE_HALO = 22;
 
 /** Same geometry nodeCanvasObject fills, expanded by `extra` world units (glow, anti-alias). */
 function traceNode(ctx: CanvasRenderingContext2D, node: GNode, extra: number) {
@@ -127,27 +130,95 @@ function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
-function statusLabel(node: GraphNode): string | null {
-  switch (node.type) {
-    case 'NOTE':
-      return node.status === 'ACTIVE' ? null : node.status ?? null;
-    case 'TASK':
-      return [node.status, node.priority].filter(Boolean).join(' · ');
-    case 'SOURCE':
-      return node.status ?? null;
-    default:
-      return null;
+/** Labels sit under the marker. Notes and tags are mostly read by that pill, so it has to be part of the hit target. */
+function labelVisible(scale: number, hoverId: string | null, hovered: boolean, connected: boolean) {
+  return hoverId ? hovered || connected : scale > 2;
+}
+
+let labelMeasure: CanvasRenderingContext2D | null = null;
+
+function measureLabel(text: string, fontSize: number): number {
+  if (typeof document === 'undefined') return text.length * fontSize * 0.55;
+  if (!labelMeasure) labelMeasure = document.createElement('canvas').getContext('2d');
+  if (!labelMeasure) return text.length * fontSize * 0.55;
+  labelMeasure.font = `500 ${fontSize}px Inter, ui-sans-serif, system-ui, sans-serif`;
+  return labelMeasure.measureText(text).width;
+}
+
+function labelBox(node: GNode, scale: number) {
+  const safe = Math.max(scale, 0.25);
+  const x = node.x ?? 0;
+  const y = node.y ?? 0;
+  const text = truncate(node.type === 'TAG' ? `#${node.label}` : node.label, 32);
+  const fontSize = 10 / safe;
+  const padX = 5 / safe;
+  const padY = 1.5 / safe;
+  const w = measureLabel(text, fontSize) + padX * 2;
+  const h = fontSize + padY * 2;
+  const left = x - w / 2;
+  const top = y + nodeRadius(node) + 4 / safe;
+  return { text, fontSize, left, top, w, h, cx: x, cy: top + h / 2 };
+}
+
+function traceLabel(ctx: CanvasRenderingContext2D, node: GNode, scale: number) {
+  const box = labelBox(node, scale);
+  roundRect(ctx, box.left, box.top, box.w, box.h, box.h / 2);
+  return box;
+}
+
+/** Hit markers from geometry. The canvas color picker drops every tag except the ones whose pixels survive link strokes. */
+function hitTestNode(
+  nodes: GNode[],
+  point: { x: number; y: number },
+  scale: number,
+  hoverId: string | null,
+  neighbors: Map<string, Set<string>>,
+): GNode | null {
+  const safe = Math.max(scale, 0.25);
+  const extra = Math.max(NODE_HALO, NODE_HALO / safe);
+  let marker: { node: GNode; d: number } | null = null;
+  for (const node of nodes) {
+    if (node.x == null || node.y == null) continue;
+    const d = Math.hypot(point.x - node.x, point.y - node.y);
+    if (d <= nodeRadius(node) + extra && (!marker || d < marker.d)) marker = { node, d };
   }
+  if (marker) return marker.node;
+
+  let labelHit: { node: GNode; d: number } | null = null;
+  for (const node of nodes) {
+    if (node.x == null || node.y == null) continue;
+    const id = node.id as string;
+    const hovered = id === hoverId;
+    const connected = hoverId ? (neighbors.get(hoverId)?.has(id) ?? false) : false;
+    if (!labelVisible(scale, hoverId, hovered, connected)) continue;
+    const box = labelBox(node, scale);
+    const inside =
+      point.x >= box.left && point.x <= box.left + box.w && point.y >= box.top && point.y <= box.top + box.h;
+    if (!inside) continue;
+    const d = Math.hypot(point.x - box.cx, point.y - box.cy);
+    if (!labelHit || d < labelHit.d) labelHit = { node, d };
+  }
+  return labelHit?.node ?? null;
 }
 
 export const KnowledgeGraphPage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [params, setParams] = useSearchParams();
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const graphRef = useRef<ForceGraphMethods<GNode, GLink> | undefined>(undefined);
   const nodeCache = useRef(new Map<string, GNode>());
   const hasFittedRef = useRef(false);
   const lastClickRef = useRef<{ id: string; at: number } | null>(null);
+  const rememberRef = useRef<(id: string | null) => void>(() => {});
+  const openRef = useRef<(node: GNode) => void>(() => {});
+  const hoverRef = useRef<string | null>(null);
+  const graphStateRef = useRef({
+    nodes: [] as GNode[],
+    neighbors: new Map<string, Set<string>>(),
+    hoverId: null as string | null,
+  });
 
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -155,10 +226,38 @@ export const KnowledgeGraphPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
+  const [focusDepth, setFocusDepth] = useState(1);
+  const [openTasksOnly, setOpenTasksOnly] = useState(false);
+  const [hiddenEdgeTypes, setHiddenEdgeTypes] = useState<Set<GraphEdgeType>>(() => new Set());
+  const [searchIndex, setSearchIndex] = useState(0);
+  const [hoveredEdge, setHoveredEdge] = useState<GLink | null>(null);
+  const [insightsOpen, setInsightsOpen] = useState(false);
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['graph', 'topology', includeArchived],
     queryFn: () => apiClient.getGraphTopology({ includeArchived, includeTags: true }),
+  });
+
+  const suggestions = useQuery({
+    queryKey: ['graph', 'suggestions'],
+    queryFn: () => apiClient.listGraphSuggestions(),
+  });
+
+  const generateSuggestions = useMutation({
+    mutationFn: () => apiClient.generateGraphSuggestions(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['graph', 'suggestions'] });
+    },
+  });
+
+  const reviewSuggestion = useMutation({
+    mutationFn: ({ id, accept }: { id: string; accept: boolean }) =>
+      accept ? apiClient.acceptGraphSuggestion(id) : apiClient.rejectGraphSuggestion(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['graph', 'suggestions'] });
+      void queryClient.invalidateQueries({ queryKey: ['graph', 'topology'] });
+    },
   });
 
   useEffect(() => {
@@ -218,36 +317,140 @@ export const KnowledgeGraphPage: React.FC = () => {
   }, [data]);
 
   const graphData = useMemo(() => {
-    const nodes = [...nodesById.values()].filter((n) => visibleTypes.has(n.type));
+    const nodes = [...nodesById.values()].filter((n) => {
+      if (!visibleTypes.has(n.type)) return false;
+      if (openTasksOnly && n.type === 'TASK' && n.status !== 'OPEN') return false;
+      return true;
+    });
     const visible = new Set(nodes.map((n) => n.id as string));
     const links: GLink[] = edges
-      .filter((e) => visible.has(e.source) && visible.has(e.target))
-      .map((e) => ({ id: e.id, type: e.type, source: e.source, target: e.target }));
+      .filter((e) => visible.has(e.source) && visible.has(e.target) && !hiddenEdgeTypes.has(e.type))
+      .map((e) => ({ id: e.id, type: e.type, origin: e.origin ?? 'EXPLICIT', source: e.source, target: e.target }));
+    for (const suggestion of suggestions.data ?? []) {
+      if (hiddenEdgeTypes.has('RELATED_TO')) continue;
+      if (!visible.has(suggestion.sourceKey) || !visible.has(suggestion.targetKey)) continue;
+      links.push({
+        id: `pending:${suggestion.id}`,
+        type: 'RELATED_TO',
+        origin: 'PENDING',
+        source: suggestion.sourceKey,
+        target: suggestion.targetKey,
+      });
+    }
     return { nodes, links };
-  }, [nodesById, edges, visibleTypes]);
+  }, [nodesById, edges, visibleTypes, openTasksOnly, hiddenEdgeTypes, suggestions.data]);
+
+  const nodeIdsKey = graphData.nodes.map((node) => node.id).join('\0');
+
+  const searchResults = useMemo(
+    () => searchNodes(graphData.nodes as Array<GraphNode & { id: string }>, query).slice(0, 8),
+    [graphData.nodes, query],
+  );
 
   const searchMatches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return null;
-    const matches = new Set<string>();
-    for (const node of graphData.nodes) {
-      if (node.label.toLowerCase().includes(q)) matches.add(node.id as string);
-    }
-    return matches;
-  }, [query, graphData.nodes]);
+    if (!query.trim()) return null;
+    return new Set(searchResults.map((node) => node.id));
+  }, [query, searchResults]);
 
   const focusId = hoverId ?? selectedId;
 
+  const focusNeighborhood = useMemo(() => {
+    if (!focusMode || !selectedId) return null;
+    return neighborhood(neighbors, selectedId, focusDepth);
+  }, [focusMode, selectedId, focusDepth, neighbors]);
+
   const activeSet = useMemo(() => {
+    if (focusNeighborhood) return focusNeighborhood;
     if (focusId) return new Set([focusId, ...(neighbors.get(focusId) ?? [])]);
     return searchMatches;
-  }, [focusId, neighbors, searchMatches]);
+  }, [focusNeighborhood, focusId, neighbors, searchMatches]);
 
   const selectedNode = selectedId ? nodesById.get(selectedId) ?? null : null;
 
   useEffect(() => {
     if (selectedId && !nodesById.has(selectedId)) setSelectedId(null);
   }, [selectedId, nodesById]);
+
+  useEffect(() => {
+    const id = params.get('node');
+    if (id && nodesById.has(id)) setSelectedId(id);
+  }, [params, nodesById]);
+
+  const rememberSelection = useCallback(
+    (id: string | null) => {
+      setSelectedId(id);
+      const next = new URLSearchParams(params);
+      if (id) next.set('node', id);
+      else next.delete('node');
+      setParams(next, { replace: true });
+    },
+    [params, setParams],
+  );
+  rememberRef.current = rememberSelection;
+  graphStateRef.current = { nodes: graphData.nodes, neighbors, hoverId };
+
+  const pickNode = (event: PointerEvent): GNode | null => {
+    const fg = graphRef.current;
+    const canvas = event.target instanceof HTMLCanvasElement ? event.target : null;
+    if (!fg || !canvas || event.target !== canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const point = fg.screen2GraphCoords(event.clientX - rect.left, event.clientY - rect.top);
+    const { nodes, neighbors: links, hoverId: hover } = graphStateRef.current;
+    return hitTestNode(nodes, point, fg.zoom() || 1, hover, links);
+  };
+
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    let down: { x: number; y: number } | null = null;
+    const onDown = (event: PointerEvent) => {
+      if (event.button !== 0 || !(event.target instanceof HTMLCanvasElement)) return;
+      down = { x: event.clientX, y: event.clientY };
+    };
+    const onMove = (event: PointerEvent) => {
+      if (!(event.target instanceof HTMLCanvasElement)) {
+        if (hoverRef.current) {
+          hoverRef.current = null;
+          setHoverId(null);
+        }
+        return;
+      }
+      const hit = pickNode(event);
+      const id = hit ? (hit.id as string) : null;
+      if (id !== hoverRef.current) {
+        hoverRef.current = id;
+        setHoverId(id);
+      }
+    };
+    const onUp = (event: PointerEvent) => {
+      if (!down) return;
+      const start = down;
+      down = null;
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6) return;
+      const hit = pickNode(event);
+      if (!hit) {
+        rememberRef.current(null);
+        return;
+      }
+      const id = hit.id as string;
+      const now = Date.now();
+      const last = lastClickRef.current;
+      lastClickRef.current = { id, at: now };
+      if (last && last.id === id && now - last.at < DOUBLE_CLICK_MS) {
+        openRef.current(hit);
+        return;
+      }
+      rememberRef.current(id);
+    };
+    root.addEventListener('pointerdown', onDown);
+    root.addEventListener('pointermove', onMove);
+    root.addEventListener('pointerup', onUp);
+    return () => {
+      root.removeEventListener('pointerdown', onDown);
+      root.removeEventListener('pointermove', onMove);
+      root.removeEventListener('pointerup', onUp);
+    };
+  }, []);
 
   const isEmpty = !isLoading && !isError && (data?.nodes.length ?? 0) === 0;
   const canRenderGraph = size.width > 0 && !!data && !isEmpty;
@@ -280,7 +483,7 @@ export const KnowledgeGraphPage: React.FC = () => {
     fg.d3Force('cluster', createClusterForce(0.08));
     fg.d3Force('gravity', null);
     fg.d3ReheatSimulation();
-  }, [graphData, canRenderGraph]);
+  }, [nodeIdsKey, canRenderGraph]);
 
   const focusNode = useCallback((node: GNode) => {
     const fg = graphRef.current;
@@ -310,31 +513,16 @@ export const KnowledgeGraphPage: React.FC = () => {
     },
     [navigate, neighbors, nodesById],
   );
-
-  const handleNodeClick = useCallback(
-    (node: GNode) => {
-      const id = node.id as string;
-      const now = Date.now();
-      const last = lastClickRef.current;
-      lastClickRef.current = { id, at: now };
-      if (last && last.id === id && now - last.at < DOUBLE_CLICK_MS) {
-        openNode(node);
-        return;
-      }
-      setSelectedId(id);
-      focusNode(node);
-    },
-    [focusNode, openNode],
-  );
+  openRef.current = openNode;
 
   const selectById = useCallback(
     (id: string) => {
       const node = nodesById.get(id);
       if (!node) return;
-      setSelectedId(id);
+      rememberSelection(id);
       focusNode(node);
     },
-    [nodesById, focusNode],
+    [nodesById, focusNode, rememberSelection],
   );
 
   const toggleType = (type: GraphNodeType) => {
@@ -359,7 +547,7 @@ export const KnowledgeGraphPage: React.FC = () => {
       const target = e.target as HTMLElement | null;
       const typing = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
       if (e.key === 'Escape') {
-        setSelectedId(null);
+        rememberSelection(null);
         if (typing) {
           setQuery('');
           searchRef.current?.blur();
@@ -371,7 +559,7 @@ export const KnowledgeGraphPage: React.FC = () => {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [rememberSelection]);
 
   const isLinkActive = useCallback(
     (link: GLink) => !!focusId && (endId(link.source) === focusId || endId(link.target) === focusId),
@@ -389,12 +577,14 @@ export const KnowledgeGraphPage: React.FC = () => {
       const connected = hoverId ? (neighbors.get(hoverId)?.has(id) ?? false) : false;
       const dimmed = hoverId
         ? !hovered && !connected
-        : searchMatches !== null && !searchMatches.has(id);
+        : focusNeighborhood
+          ? !focusNeighborhood.has(id)
+          : searchMatches !== null && !searchMatches.has(id);
 
       ctx.save();
       ctx.globalAlpha = dimmed ? 0.15 : 1;
       if (!dimmed) {
-        ctx.shadowBlur = hovered ? 22 : 15;
+        ctx.shadowBlur = hovered ? NODE_HALO : 15;
         ctx.shadowColor = color;
       }
 
@@ -421,42 +611,46 @@ export const KnowledgeGraphPage: React.FC = () => {
         ctx.stroke();
       }
 
-      const showLabel = hoverId ? hovered || connected : scale > 2;
+      const showLabel = labelVisible(scale, hoverId, hovered, connected);
       if (showLabel) {
-        const text = truncate(node.type === 'TAG' ? `#${node.label}` : node.label, 36);
-        const fontSize = 12 / scale;
-        ctx.font = `500 ${fontSize}px Inter, ui-sans-serif, system-ui, sans-serif`;
-        const padX = 12 / scale;
-        const padY = 4 / scale;
-        const textWidth = ctx.measureText(text).width;
-        const pillW = textWidth + padX * 2;
-        const pillH = fontSize + padY * 2;
-        const pillX = x - pillW / 2;
-        const pillY = y + r + 6 / scale;
         ctx.globalAlpha = 1;
         ctx.fillStyle = 'rgba(9, 9, 11, 0.8)';
-        roundRect(ctx, pillX, pillY, pillW, pillH, pillH / 2);
+        const label = traceLabel(ctx, node, scale);
         ctx.fill();
-        ctx.fillStyle = '#fafafa';
+        ctx.font = `500 ${label.fontSize}px Inter, ui-sans-serif, system-ui, sans-serif`;
+        ctx.fillStyle = '#e4e4e7';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(text, x, pillY + pillH / 2);
+        ctx.fillText(label.text, label.cx, label.cy);
       }
       ctx.restore();
     },
-    [hoverId, neighbors, searchMatches, selectedId],
+    [hoverId, neighbors, searchMatches, selectedId, focusNeighborhood],
   );
 
   const paintPointerArea = useCallback((node: GNode, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => {
-    const glow = NODE_GLOW_PX / Math.max(globalScale, 0.25);
+    // shadowBlur is in world units, so the halo grows on screen as you zoom.
+    // The old hit slop shrank by the same zoom, and clicks on note 1's glow missed.
+    const scale = Math.max(globalScale, 0.25);
+    const glow = Math.max(NODE_HALO, NODE_HALO / scale);
+    const id = node.id as string;
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
+    ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = color;
     traceNode(ctx, node, glow);
     ctx.fill();
+    const hovered = id === hoverId;
+    const connected = hoverId ? (neighbors.get(hoverId)?.has(id) ?? false) : false;
+    if (labelVisible(globalScale, hoverId, hovered, connected)) {
+      // Keep the marker on top of this node's label and of labels painted earlier.
+      ctx.globalCompositeOperation = 'destination-over';
+      traceLabel(ctx, node, globalScale);
+      ctx.fill();
+    }
     ctx.restore();
-  }, []);
+  }, [hoverId, neighbors]);
 
   const totalNodes = graphData.nodes.length;
 
@@ -490,7 +684,7 @@ export const KnowledgeGraphPage: React.FC = () => {
                 : 'rgba(113, 113, 122, 0.45)'
           }
           linkWidth={(link) => (isLinkActive(link) ? 1.35 : 0.7)}
-          linkLineDash={(link) => (link.type === 'NOTE_TAGGED' ? [2, 3] : null)}
+          linkLineDash={(link) => (link.origin === 'PENDING' || link.type === 'NOTE_TAGGED' ? [2, 3] : null)}
           linkDirectionalParticles={2}
           linkDirectionalParticleWidth={1.6}
           linkDirectionalParticleSpeed={0.005}
@@ -507,9 +701,7 @@ export const KnowledgeGraphPage: React.FC = () => {
           enablePointerInteraction
           enableZoomInteraction
           enablePanInteraction
-          onNodeHover={(node) => setHoverId(node ? (node.id as string) : null)}
-          onNodeClick={handleNodeClick}
-          onBackgroundClick={() => setSelectedId(null)}
+          onLinkHover={(link) => setHoveredEdge(link ?? null)}
           onEngineStop={() => {
             for (const node of graphData.nodes) {
               node.vx = 0;
@@ -540,8 +732,16 @@ export const KnowledgeGraphPage: React.FC = () => {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && searchMatches && searchMatches.size > 0) {
-                  selectById(searchMatches.values().next().value as string);
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setSearchIndex((index) => Math.min(index + 1, Math.max(searchResults.length - 1, 0)));
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setSearchIndex((index) => Math.max(index - 1, 0));
+                } else if (e.key === 'Enter' && searchResults[searchIndex]) {
+                  selectById(searchResults[searchIndex].id);
+                } else if (e.key === 'Escape') {
+                  setQuery('');
                 }
               }}
               placeholder="Find a node…"
@@ -559,11 +759,24 @@ export const KnowledgeGraphPage: React.FC = () => {
               <kbd className="rounded border border-zinc-800 px-1 font-mono text-[10px] text-zinc-500">/</kbd>
             )}
           </div>
-          {searchMatches && (
-            <span className="text-[11px] text-zinc-500">
-              {searchMatches.size} match{searchMatches.size === 1 ? '' : 'es'}
-              {searchMatches.size > 0 && ' · Enter to focus'}
-            </span>
+          {query.trim() && (
+            <div className="w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950/95 sm:w-72">
+              {searchResults.length === 0 && <p className="px-2.5 py-2 text-xs text-zinc-500">No matching nodes.</p>}
+              {searchResults.map((node, index) => (
+                <button
+                  key={node.id}
+                  type="button"
+                  onClick={() => selectById(node.id)}
+                  className={cn(
+                    'flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs',
+                    index === searchIndex ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-300 hover:bg-zinc-900',
+                  )}
+                >
+                  <span className="truncate">{node.type === 'TAG' ? `#${node.label}` : node.label}</span>
+                  <span className="ml-auto text-[10px] text-zinc-500">{node.type}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
@@ -619,25 +832,184 @@ export const KnowledgeGraphPage: React.FC = () => {
           </button>
           <button
             onClick={zoomToFit}
-            title="Zoom to fit"
-            aria-label="Zoom to fit"
+            title="Fit graph"
+            aria-label="Fit graph"
             className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
           >
             <Maximize2 className="h-3.5 w-3.5" />
           </button>
+          <button
+            type="button"
+            aria-label="Zoom in"
+            onClick={() => graphRef.current?.zoom((graphRef.current.zoom() || 1) * 1.25, 200)}
+            className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Zoom out"
+            onClick={() => graphRef.current?.zoom((graphRef.current.zoom() || 1) / 1.25, 200)}
+            className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-pressed={openTasksOnly}
+            onClick={() => setOpenTasksOnly((value) => !value)}
+            className={cn('h-6 rounded px-2 text-[11px]', openTasksOnly ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500')}
+          >
+            Open tasks
+          </button>
+          <button
+            type="button"
+            aria-label="Center selected node"
+            disabled={!selectedNode}
+            onClick={() => selectedNode && focusNode(selectedNode)}
+            className="h-6 rounded px-2 text-[11px] text-zinc-500 disabled:opacity-40"
+          >
+            Center
+          </button>
+          <button
+            type="button"
+            aria-pressed={focusMode}
+            onClick={() => setFocusMode((value) => !value)}
+            className={cn('h-6 rounded px-2 text-[11px]', focusMode ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-500')}
+          >
+            Focus
+          </button>
+          {focusMode && (
+            <span className="flex items-center gap-1 px-1 text-[11px] text-zinc-400">
+              {[1, 2, 3].map((depth) => (
+                <button
+                  key={depth}
+                  type="button"
+                  aria-pressed={focusDepth === depth}
+                  onClick={() => setFocusDepth(depth)}
+                  className={cn('h-6 w-6 rounded', focusDepth === depth ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500')}
+                >
+                  {depth}
+                </button>
+              ))}
+            </span>
+          )}
+          <button
+            type="button"
+            aria-pressed={insightsOpen}
+            onClick={() => setInsightsOpen((value) => !value)}
+            className={cn('h-6 rounded px-2 text-[11px]', insightsOpen ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500')}
+          >
+            Insights
+          </button>
         </div>
       </div>
 
-      {/* Selection inspector */}
+      {selectedId && nodesById.has(selectedId) && !graphData.nodes.some((node) => node.id === selectedId) && (
+        <div className="absolute left-1/2 top-24 z-20 -translate-x-1/2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-300">
+          This node is hidden by the current filters.
+          <button type="button" className="ml-2 text-zinc-100 underline" onClick={() => { setOpenTasksOnly(false); setVisibleTypes(new Set(NODE_TYPES)); }}>
+            Clear filters
+          </button>
+        </div>
+      )}
+
+      {focusMode && (
+        <div className="pointer-events-none absolute left-1/2 top-20 z-10 -translate-x-1/2 rounded-full border border-zinc-800 bg-zinc-950/90 px-3 py-1 text-[11px] text-zinc-300">
+          Focus · {focusDepth} hop{focusDepth === 1 ? '' : 's'} · other nodes stay on the canvas
+        </div>
+      )}
+
       {selectedNode && (
-        <NodeInspector
-          node={selectedNode}
+        <GraphInspector
+          node={selectedNode as GraphNode & { id: string }}
+          nodes={nodesById as Map<string, GraphNode & { id: string }>}
+          edges={edges}
           neighborIds={[...(neighbors.get(selectedNode.id as string) ?? [])]}
-          nodesById={nodesById}
           onSelect={selectById}
           onOpen={() => openNode(selectedNode)}
-          onClose={() => setSelectedId(null)}
+          onAsk={() => {
+            sessionStorage.setItem('unmute-ask-seed', `What should I know about "${selectedNode.label}"?`);
+            navigate('/ask');
+          }}
+          onClose={() => rememberSelection(null)}
         />
+      )}
+
+      <div className="absolute bottom-3 left-3 z-20 max-w-[16rem] rounded-lg border border-zinc-800/80 bg-zinc-950/90 p-2 text-[11px] text-zinc-400 backdrop-blur max-md:bottom-[calc(5.5rem+env(safe-area-inset-bottom))]">
+        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Legend</p>
+        {(Object.keys(EDGE_META) as GraphEdgeType[]).map((type) => (
+          <button
+            key={type}
+            type="button"
+            aria-pressed={!hiddenEdgeTypes.has(type)}
+            onClick={() => setHiddenEdgeTypes((prev) => {
+              const next = new Set(prev);
+              if (next.has(type)) next.delete(type);
+              else next.add(type);
+              return next;
+            })}
+            className={cn('flex w-full items-center gap-2 rounded px-1 py-0.5 text-left', hiddenEdgeTypes.has(type) && 'opacity-40')}
+          >
+            <span className={cn('h-px w-6 bg-zinc-400', EDGE_META[type].dashed && 'border-t border-dashed border-zinc-400 bg-transparent')} />
+            <span>{EDGE_META[type].label}</span>
+          </button>
+        ))}
+        {hoveredEdge && (
+          <p className="mt-1 border-t border-zinc-800 pt-1 text-zinc-300">
+            {EDGE_META[hoveredEdge.type].label}
+            {hoveredEdge.origin === 'PENDING' ? ' · suggested, not saved' : hoveredEdge.origin === 'ACCEPTED' ? ' · confirmed' : ' · saved'}
+          </p>
+        )}
+      </div>
+
+      {insightsOpen && (
+        <div className="absolute left-3 top-28 z-20 w-72 max-h-[50dvh] overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950/95 p-3 text-xs text-zinc-300">
+          <p className="text-[10px] uppercase tracking-wider text-zinc-500">Insights</p>
+          {buildInsights([...nodesById.values()], neighbors).length === 0 && (
+            <p className="mt-2 text-zinc-500">Nothing to flag in this graph yet.</p>
+          )}
+          <ul className="mt-2 space-y-1">
+            {buildInsights([...nodesById.values()], neighbors).map((insight) => (
+              <li key={insight.id}>
+                <button type="button" onClick={() => selectById(insight.nodeId)} className="w-full rounded px-1 py-1 text-left hover:bg-zinc-800/70">
+                  <span className="block text-zinc-100">{insight.title}</span>
+                  <span className="block text-zinc-500">{insight.detail}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 border-t border-zinc-800 pt-2">
+            <p className="text-[10px] uppercase tracking-wider text-zinc-500">Shared-tag suggestions</p>
+            <p className="mt-1 text-zinc-500">These are rule matches, not a language-model judgment.</p>
+            <button
+              type="button"
+              onClick={() => generateSuggestions.mutate()}
+              disabled={generateSuggestions.isPending}
+              className="mt-2 min-h-11 rounded-lg bg-zinc-100 px-3 text-zinc-950 disabled:opacity-60"
+            >
+              {generateSuggestions.isPending ? 'Looking…' : 'Find shared tags'}
+            </button>
+            {suggestions.isError && <p className="mt-2 text-zinc-500">Suggestions are unavailable until the graph service is updated.</p>}
+            {!suggestions.isError && !generateSuggestions.isPending && (suggestions.data ?? []).length === 0 && (
+              <p className="mt-2 text-zinc-500">No notes share a tag right now.</p>
+            )}
+            <ul className="mt-2 space-y-2">
+              {(suggestions.data ?? []).map((suggestion) => (
+                <li key={suggestion.id} className="rounded-lg border border-dashed border-zinc-700 p-2">
+                  <p className="text-zinc-100">{suggestion.sourceLabel || suggestion.sourceKey} · {suggestion.targetLabel || suggestion.targetKey}</p>
+                  <p className="mt-1 text-zinc-400">{suggestion.explanation}</p>
+                  {suggestion.evidence && <p className="mt-1 text-zinc-500">Evidence: #{suggestion.evidence}</p>}
+                  <div className="mt-2 flex gap-2">
+                    <button type="button" className="min-h-11 rounded px-2 text-zinc-100" onClick={() => selectById(suggestion.sourceKey)}>Open</button>
+                    <button type="button" className="min-h-11 rounded px-2 text-zinc-100" onClick={() => reviewSuggestion.mutate({ id: suggestion.id, accept: true })}>Accept</button>
+                    <button type="button" className="min-h-11 rounded px-2 text-zinc-400" onClick={() => reviewSuggestion.mutate({ id: suggestion.id, accept: false })}>Reject</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       )}
 
       {/* States */}
@@ -684,83 +1056,3 @@ export const KnowledgeGraphPage: React.FC = () => {
   );
 };
 
-interface NodeInspectorProps {
-  node: GNode;
-  neighborIds: string[];
-  nodesById: Map<string, GNode>;
-  onSelect: (id: string) => void;
-  onOpen: () => void;
-  onClose: () => void;
-}
-
-const MAX_INSPECTOR_LINKS = 8;
-
-const NodeInspector: React.FC<NodeInspectorProps> = ({ node, neighborIds, nodesById, onSelect, onOpen, onClose }) => {
-  const meta = TYPE_META[node.type];
-  const Icon = meta.icon;
-  const status = statusLabel(node);
-  const linked = neighborIds
-    .map((id) => nodesById.get(id))
-    .filter((n): n is GNode => n !== undefined)
-    .sort((a, b) => NODE_TYPES.indexOf(a.type) - NODE_TYPES.indexOf(b.type));
-  const openLabel =
-    node.type === 'NOTE' ? 'Open note' : node.type === 'TASK' ? 'Open in context' : node.type === 'SOURCE' ? 'Open sources' : null;
-
-  return (
-    <div className="absolute bottom-24 right-4 z-20 w-80 rounded-2xl border border-zinc-800 bg-zinc-950/80 shadow-2xl shadow-black/50 backdrop-blur">
-      <div className="flex items-start gap-2.5 border-b border-zinc-800/50 p-3">
-        <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: meta.color }} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-zinc-100" title={node.label}>
-            {node.type === 'TAG' ? `#${node.label}` : node.label}
-          </p>
-          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-500">
-            {node.type}
-            {status && ` · ${status}`}
-          </p>
-        </div>
-        <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200" aria-label="Close inspector">
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      <div className="p-1.5">
-        <p className="px-1.5 pb-1 pt-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-          {linked.length} connection{linked.length === 1 ? '' : 's'}
-        </p>
-        {linked.length === 0 ? (
-          <p className="px-1.5 pb-1.5 text-xs text-zinc-500">Orphan node — nothing links here yet.</p>
-        ) : (
-          <ul className="max-h-48 overflow-y-auto">
-            {linked.slice(0, MAX_INSPECTOR_LINKS).map((n) => (
-              <li key={n.id as string}>
-                <button
-                  onClick={() => onSelect(n.id as string)}
-                  className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs text-zinc-300 hover:bg-zinc-800/70"
-                >
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: nodeColor(n) }} />
-                  <span className="truncate">{n.type === 'TAG' ? `#${n.label}` : n.label}</span>
-                </button>
-              </li>
-            ))}
-            {linked.length > MAX_INSPECTOR_LINKS && (
-              <li className="px-1.5 py-1 text-[11px] text-zinc-500">+{linked.length - MAX_INSPECTOR_LINKS} more</li>
-            )}
-          </ul>
-        )}
-      </div>
-
-      {openLabel && (
-        <div className="border-t border-zinc-800/50 p-1.5">
-          <button
-            onClick={onOpen}
-            className="flex w-full items-center justify-between rounded px-1.5 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-800/70"
-          >
-            {openLabel}
-            <ArrowUpRight className="h-3.5 w-3.5 text-zinc-500" />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
