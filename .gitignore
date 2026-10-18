@@ -54,3 +54,8 @@ apps/mobile/android/
 coverage/
 *.lcov
 .nyc_output/
+
+# === Local agent tooling and the Vite dev service worker ===
+.agents/
+skills-lock.json
+apps/web/dev-dist/
