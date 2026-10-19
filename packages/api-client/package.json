@@ -12,7 +12,8 @@
     }
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit --allowImportingTsExtensions",
+    "test": "node --test src/sourceUpload.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",

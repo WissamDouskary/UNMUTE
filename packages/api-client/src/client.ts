@@ -45,6 +45,7 @@ import type {
   MeetingNoteResponse,
 } from './types';
 import { readSseStream } from './sse';
+import { sourceFilePart, type SourceFileUpload } from './sourceUpload';
 
 const LIVE_EVENT_TYPES: ReadonlySet<string> = new Set<LiveEvent['type']>([
   'note.tagged',
@@ -484,6 +485,41 @@ export class ApiClient {
     } else {
       formData.append('file', file, filename || 'recording.webm');
     }
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorBody: ApiError;
+      try {
+        errorBody = (await response.json()) as ApiError;
+      } catch {
+        errorBody = { status: response.status, message: response.statusText || `HTTP ${response.status}` };
+      }
+      if (response.status === 401 && this.onUnauthorized) {
+        this.onUnauthorized();
+      }
+      throw errorBody;
+    }
+
+    return response.json() as Promise<Source>;
+  }
+
+  async uploadSourceFile(file: SourceFileUpload): Promise<Source> {
+    const url = this.buildUrl('/api/v1/sources');
+    const token = this.getAccessToken();
+
+    const formData = new FormData();
+    // React Native FormData accepts { uri, name, type }. DOM types only accept Blob.
+    formData.append('file', sourceFilePart(file) as unknown as Blob);
 
     const headers: Record<string, string> = {};
     if (token) {

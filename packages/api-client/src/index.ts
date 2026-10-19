@@ -2,6 +2,7 @@ import { apiClient } from './client';
 
 export { ApiClient, apiClient, resolveBaseUrl } from './client';
 export type { ApiClientConfig, UnauthorizedHandler } from './client';
+export type { SourceFileUpload } from './sourceUpload';
 export type {
   User,
   AuthResponse,
