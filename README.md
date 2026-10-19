@@ -113,6 +113,8 @@ docker compose -p unmute-it -f docker-compose.it.yml down
 ```bash
 npm install
 npm run dev:web
+npm run test -w apps/web    # Vitest
+npm run build:web
 ```
 
 ### Mobile (on host, requires macOS for iOS Simulator)

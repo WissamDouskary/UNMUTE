@@ -22,7 +22,7 @@ import {
 import { apiClient, type GraphEdgeType, type GraphNode, type GraphNodeType } from '@unmute/api-client';
 import { cn } from '../lib/utils';
 import { GraphInspector } from './graph/GraphInspector';
-import { EDGE_META, buildInsights, neighborhood, searchNodes } from './graph/graphIntelligence';
+import { EDGE_META, buildInsights, filterGraph, neighborhood, searchNodes } from './graph/graphIntelligence';
 
 type NodeData = GraphNode & { degree: number };
 type LinkData = { id: string; type: GraphEdgeType; origin?: string };
@@ -316,29 +316,17 @@ export const KnowledgeGraphPage: React.FC = () => {
     return { nodesById, edges, neighbors, counts };
   }, [data]);
 
-  const graphData = useMemo(() => {
-    const nodes = [...nodesById.values()].filter((n) => {
-      if (!visibleTypes.has(n.type)) return false;
-      if (openTasksOnly && n.type === 'TASK' && n.status !== 'OPEN') return false;
-      return true;
-    });
-    const visible = new Set(nodes.map((n) => n.id as string));
-    const links: GLink[] = edges
-      .filter((e) => visible.has(e.source) && visible.has(e.target) && !hiddenEdgeTypes.has(e.type))
-      .map((e) => ({ id: e.id, type: e.type, origin: e.origin ?? 'EXPLICIT', source: e.source, target: e.target }));
-    for (const suggestion of suggestions.data ?? []) {
-      if (hiddenEdgeTypes.has('RELATED_TO')) continue;
-      if (!visible.has(suggestion.sourceKey) || !visible.has(suggestion.targetKey)) continue;
-      links.push({
-        id: `pending:${suggestion.id}`,
-        type: 'RELATED_TO',
-        origin: 'PENDING',
-        source: suggestion.sourceKey,
-        target: suggestion.targetKey,
-      });
-    }
-    return { nodes, links };
-  }, [nodesById, edges, visibleTypes, openTasksOnly, hiddenEdgeTypes, suggestions.data]);
+  const graphData = useMemo(
+    () => filterGraph({
+      nodes: [...nodesById.values()],
+      edges,
+      visibleTypes,
+      openTasksOnly,
+      hiddenEdgeTypes,
+      suggestions: suggestions.data ?? [],
+    }),
+    [nodesById, edges, visibleTypes, openTasksOnly, hiddenEdgeTypes, suggestions.data],
+  );
 
   const nodeIdsKey = graphData.nodes.map((node) => node.id).join('\0');
 

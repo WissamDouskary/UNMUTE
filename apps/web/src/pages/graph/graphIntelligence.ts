@@ -43,6 +43,52 @@ export function searchNodes<T extends { id: string; label: string; type: GraphNo
   });
 }
 
+export interface FilteredLink {
+  id: string;
+  type: GraphEdgeType;
+  origin: string;
+  source: string;
+  target: string;
+}
+
+/** The same node and relationship filter the graph page applies before layout. */
+export function filterGraph<T extends GraphNode>(input: {
+  nodes: T[];
+  edges: GraphEdge[];
+  visibleTypes: ReadonlySet<GraphNodeType>;
+  openTasksOnly: boolean;
+  hiddenEdgeTypes: ReadonlySet<GraphEdgeType>;
+  suggestions?: ReadonlyArray<{ id: string; sourceKey: string; targetKey: string }>;
+}): { nodes: T[]; links: FilteredLink[] } {
+  const nodes = input.nodes.filter((node) => {
+    if (!input.visibleTypes.has(node.type)) return false;
+    if (input.openTasksOnly && node.type === 'TASK' && node.status !== 'OPEN') return false;
+    return true;
+  });
+  const visible = new Set(nodes.map((node) => node.id));
+  const links: FilteredLink[] = input.edges
+    .filter((edge) => visible.has(edge.source) && visible.has(edge.target) && !input.hiddenEdgeTypes.has(edge.type))
+    .map((edge) => ({
+      id: edge.id,
+      type: edge.type,
+      origin: edge.origin ?? 'EXPLICIT',
+      source: edge.source,
+      target: edge.target,
+    }));
+  for (const suggestion of input.suggestions ?? []) {
+    if (input.hiddenEdgeTypes.has('RELATED_TO')) continue;
+    if (!visible.has(suggestion.sourceKey) || !visible.has(suggestion.targetKey)) continue;
+    links.push({
+      id: `pending:${suggestion.id}`,
+      type: 'RELATED_TO',
+      origin: 'PENDING',
+      source: suggestion.sourceKey,
+      target: suggestion.targetKey,
+    });
+  }
+  return { nodes, links };
+}
+
 export interface GraphInsight {
   id: string;
   title: string;
