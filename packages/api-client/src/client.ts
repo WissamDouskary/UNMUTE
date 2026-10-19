@@ -578,6 +578,9 @@ export class ApiClient {
     if (params.includeTags !== undefined) {
       query.set('includeTags', String(params.includeTags));
     }
+    for (const type of params.relationTypes ?? []) {
+      query.append('relationTypes', type);
+    }
     const queryString = query.toString();
     const path = queryString ? `/api/v1/graph/topology?${queryString}` : '/api/v1/graph/topology';
     return this.get<GraphTopology>(path);

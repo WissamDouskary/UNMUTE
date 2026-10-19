@@ -146,5 +146,24 @@ export function buildInsights(nodes: GraphNode[], neighbors: Map<string, Set<str
       nodeId: first.id,
     });
   }
-  return insights.slice(0, 8);
+  return insights;
+}
+
+export const INSIGHT_PAGE_SIZE = 8;
+
+/** One page of insights. An offset past the end is an empty page, not a wrapped page. */
+export function pageInsights(insights: GraphInsight[], offset: number, limit: number): {
+  items: GraphInsight[];
+  total: number;
+  offset: number;
+  limit: number;
+} {
+  const size = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : INSIGHT_PAGE_SIZE;
+  const start = Number.isFinite(offset) && offset > 0 ? Math.floor(offset) : 0;
+  return {
+    items: insights.slice(start, start + size),
+    total: insights.length,
+    offset: start,
+    limit: size,
+  };
 }

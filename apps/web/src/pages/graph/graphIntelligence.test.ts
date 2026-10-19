@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GraphEdge, GraphNode, GraphNodeType } from '@unmute/api-client';
-import { filterGraph, neighborhood, searchNodes } from './graphIntelligence';
+import { buildInsights, filterGraph, neighborhood, pageInsights, searchNodes } from './graphIntelligence';
 
 const note: GraphNode = { id: 'note:a', entityId: 'a', type: 'NOTE', label: 'Interview notes', status: 'ACTIVE' };
 const openTask: GraphNode = { id: 'task:1', entityId: 't1', type: 'TASK', label: 'Call Alex', status: 'OPEN' };
@@ -46,6 +46,18 @@ describe('filterGraph', () => {
 
     expect(visible.nodes.map((node) => node.id)).toEqual(nodes.map((node) => node.id));
     expect(visible.links.map((link) => link.id)).toEqual(['e1', 'e2', 'e3', 'e4']);
+  });
+
+  it('returns an empty graph when every node type is hidden', () => {
+    const visible = filterGraph({
+      nodes,
+      edges,
+      visibleTypes: new Set(),
+      openTasksOnly: true,
+      hiddenEdgeTypes: new Set(['TASK_OF_NOTE', 'SOURCE_OF_NOTE', 'NOTE_TAGGED', 'RELATED_TO']),
+    });
+    expect(visible.nodes).toEqual([]);
+    expect(visible.links).toEqual([]);
   });
 
   it('hides completed tasks and the relationships that depended on them', () => {
@@ -122,6 +134,36 @@ describe('searchNodes', () => {
     expect(searchNodes(visible.nodes, '#hiring').map((node) => node.id)).toEqual(['tag:hiring']);
     expect(searchNodes(nodes, 'completed').map((node) => node.id)).toEqual(['task:2', 'source:s']);
     expect(searchNodes(visible.nodes, 'completed').map((node) => node.id)).toEqual(['source:s']);
+  });
+});
+
+describe('pageInsights', () => {
+  const insights = Array.from({ length: 10 }, (_, index) => ({
+    id: `idea-${index}`,
+    title: 'Note without a task',
+    detail: `Note ${index}`,
+    nodeId: `note:${index}`,
+  }));
+
+  it('returns an empty page when there are no insights', () => {
+    expect(pageInsights([], 0, 8)).toEqual({ items: [], total: 0, offset: 0, limit: 8 });
+  });
+
+  it('pages past the old cap of eight and returns nothing after the last page', () => {
+    expect(pageInsights(insights, 0, 8).items).toHaveLength(8);
+    expect(pageInsights(insights, 8, 8).items.map((item) => item.id)).toEqual(['idea-8', 'idea-9']);
+    expect(pageInsights(insights, 16, 8).items).toEqual([]);
+    expect(pageInsights(insights, 16, 8).total).toBe(10);
+  });
+
+  it('keeps every note without a task instead of stopping at eight', () => {
+    const nodes: GraphNode[] = Array.from({ length: 9 }, (_, index) => ({
+      id: `note:${index}`,
+      type: 'NOTE',
+      label: `Note ${index}`,
+      status: 'ACTIVE',
+    }));
+    expect(buildInsights(nodes, new Map())).toHaveLength(18);
   });
 });
 

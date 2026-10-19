@@ -19,6 +19,14 @@ public class GraphService {
 
     @Transactional(readOnly = true)
     public GraphTopologyDto getTopology(UUID userId, boolean includeArchived, boolean includeTags) {
+        return getTopology(userId, includeArchived, includeTags, Set.of());
+    }
+
+    /**
+     * @param relationTypes empty means every relationship type. A non-empty set keeps those edges and still returns the nodes.
+     */
+    @Transactional(readOnly = true)
+    public GraphTopologyDto getTopology(UUID userId, boolean includeArchived, boolean includeTags, Set<GraphEdgeType> relationTypes) {
         List<GraphNodeDto> nodes = new ArrayList<>();
         List<GraphEdgeDto> edges = new ArrayList<>();
         Set<String> noteKeys = new HashSet<>();
@@ -65,6 +73,10 @@ public class GraphService {
             }
             tagLabels.forEach((normalized, label) ->
                     nodes.add(new GraphNodeDto("tag:" + normalized, null, GraphNodeType.TAG, label, null, null, null)));
+        }
+
+        if (relationTypes != null && !relationTypes.isEmpty()) {
+            edges.removeIf(edge -> !relationTypes.contains(edge.type()));
         }
 
         return new GraphTopologyDto(nodes, edges, Instant.now());

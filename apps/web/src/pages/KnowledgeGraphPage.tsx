@@ -22,7 +22,7 @@ import {
 import { apiClient, type GraphEdgeType, type GraphNode, type GraphNodeType } from '@unmute/api-client';
 import { cn } from '../lib/utils';
 import { GraphInspector } from './graph/GraphInspector';
-import { EDGE_META, buildInsights, filterGraph, neighborhood, searchNodes } from './graph/graphIntelligence';
+import { EDGE_META, INSIGHT_PAGE_SIZE, buildInsights, filterGraph, neighborhood, pageInsights, searchNodes } from './graph/graphIntelligence';
 
 type NodeData = GraphNode & { degree: number };
 type LinkData = { id: string; type: GraphEdgeType; origin?: string };
@@ -233,6 +233,7 @@ export const KnowledgeGraphPage: React.FC = () => {
   const [searchIndex, setSearchIndex] = useState(0);
   const [hoveredEdge, setHoveredEdge] = useState<GLink | null>(null);
   const [insightsOpen, setInsightsOpen] = useState(false);
+  const [insightOffset, setInsightOffset] = useState(0);
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['graph', 'topology', includeArchived],
@@ -329,6 +330,11 @@ export const KnowledgeGraphPage: React.FC = () => {
   );
 
   const nodeIdsKey = graphData.nodes.map((node) => node.id).join('\0');
+
+  const insightPage = useMemo(
+    () => pageInsights(buildInsights([...nodesById.values()], neighbors), insightOffset, INSIGHT_PAGE_SIZE),
+    [nodesById, neighbors, insightOffset],
+  );
 
   const searchResults = useMemo(
     () => searchNodes(graphData.nodes as Array<GraphNode & { id: string }>, query).slice(0, 8),
@@ -954,11 +960,11 @@ export const KnowledgeGraphPage: React.FC = () => {
       {insightsOpen && (
         <div className="absolute left-3 top-28 z-20 w-72 max-h-[50dvh] overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950/95 p-3 text-xs text-zinc-300">
           <p className="text-[10px] uppercase tracking-wider text-zinc-500">Insights</p>
-          {buildInsights([...nodesById.values()], neighbors).length === 0 && (
+          {insightPage.total === 0 && (
             <p className="mt-2 text-zinc-500">Nothing to flag in this graph yet.</p>
           )}
           <ul className="mt-2 space-y-1">
-            {buildInsights([...nodesById.values()], neighbors).map((insight) => (
+            {insightPage.items.map((insight) => (
               <li key={insight.id}>
                 <button type="button" onClick={() => selectById(insight.nodeId)} className="w-full rounded px-1 py-1 text-left hover:bg-zinc-800/70">
                   <span className="block text-zinc-100">{insight.title}</span>
@@ -967,6 +973,29 @@ export const KnowledgeGraphPage: React.FC = () => {
               </li>
             ))}
           </ul>
+          {insightPage.total > insightPage.limit && (
+            <div className="mt-2 flex items-center justify-between text-[11px] text-zinc-500">
+              <button
+                type="button"
+                disabled={insightPage.offset === 0}
+                onClick={() => setInsightOffset((current) => Math.max(0, current - INSIGHT_PAGE_SIZE))}
+                className="min-h-11 disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span>
+                {insightPage.offset + 1}–{insightPage.offset + insightPage.items.length} of {insightPage.total}
+              </span>
+              <button
+                type="button"
+                disabled={insightPage.offset + insightPage.limit >= insightPage.total}
+                onClick={() => setInsightOffset((current) => current + INSIGHT_PAGE_SIZE)}
+                className="min-h-11 disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          )}
           <div className="mt-3 border-t border-zinc-800 pt-2">
             <p className="text-[10px] uppercase tracking-wider text-zinc-500">Shared-tag suggestions</p>
             <p className="mt-1 text-zinc-500">These are rule matches, not a language-model judgment.</p>

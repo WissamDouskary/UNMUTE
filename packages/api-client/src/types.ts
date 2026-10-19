@@ -311,6 +311,8 @@ export interface GraphTopology {
 export interface GraphTopologyParams {
   includeArchived?: boolean;
   includeTags?: boolean;
+  /** Omit to include every relationship. */
+  relationTypes?: GraphEdgeType[];
 }
 
 // --- Live Events (Server-Sent Events) ---
