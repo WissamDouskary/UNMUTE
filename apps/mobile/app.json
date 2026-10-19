@@ -12,11 +12,15 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.unmute.app"
+      "bundleIdentifier": "com.unmute.app",
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.unmute.app"]
+      }
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/withShareExtension"
     ]
   }
 }

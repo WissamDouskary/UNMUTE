@@ -46,6 +46,15 @@ declare module 'react-native' {
     create: <T extends Record<string, any>>(styles: T) => T;
     [key: string]: any;
   };
+  export const NativeModules: {
+    UnmuteShareInbox?: {
+      read(id: string): Promise<string | null>;
+      list(): Promise<string[]>;
+      fileUri(id: string, name: string): Promise<string | null>;
+      remove(id: string): Promise<void>;
+    };
+    [key: string]: any;
+  };
   export type ViewStyle = any;
   export type TextStyle = any;
   export type ImageStyle = any;
@@ -70,6 +79,9 @@ declare module 'expo-router' {
     back: () => void;
   };
   export const useSegments: () => string[];
+  export const useLocalSearchParams: <
+    T extends Record<string, string | string[] | undefined> = Record<string, string | string[]>,
+  >() => T;
   export const Slot: any;
   export const Stack: any;
   export const Tabs: any;

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { apiClient } from '@unmute/api-client';
 import type { User, LoginRequest, RegisterRequest, AuthResponse } from '@unmute/api-client';
 import { mobileStorage } from '../services/storage';
+import { UnmuteShareInbox, uploadStagedShare } from '../capture/shareInbox';
 
 interface AuthContextType {
   user: User | null;
@@ -36,6 +37,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Persist securely to native Keychain / KeyStore
     await mobileStorage.setTokens(authData.accessToken, authData.refreshToken);
     await mobileStorage.setUser(authData.user);
+
+    try {
+      const ids = await UnmuteShareInbox.list();
+      if (Array.isArray(ids)) {
+        for (const shareId of ids) {
+          try {
+            await uploadStagedShare(shareId);
+          } catch (err) {
+            console.warn('Pending share upload failed:', err);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Pending share list failed:', err);
+    }
   }, []);
 
   const handleLogoutLocal = useCallback(async () => {
