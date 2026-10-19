@@ -46,6 +46,13 @@ declare module 'react-native' {
     create: <T extends Record<string, any>>(styles: T) => T;
     [key: string]: any;
   };
+  export const AppState: {
+    currentState: 'active' | 'background' | 'inactive' | 'unknown' | 'extension';
+    addEventListener: (
+      type: 'change',
+      listener: (state: 'active' | 'background' | 'inactive' | 'unknown' | 'extension') => void,
+    ) => { remove: () => void };
+  };
   export const NativeModules: {
     UnmuteShareInbox?: {
       read(id: string): Promise<string | null>;

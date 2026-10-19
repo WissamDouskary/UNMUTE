@@ -7,19 +7,21 @@
     "start": "expo start",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "node --test src/capture/shareManifest.test.ts"
+    "test": "node --test src/capture/shareManifest.test.ts src/capture/shareInbox.test.ts src/capture/recordingFile.test.ts"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.75.0",
     "@unmute/api-client": "*",
     "expo": "~52.0.0",
+    "expo-av": "~15.0.2",
+    "expo-file-system": "~18.0.12",
     "expo-router": "~4.0.0",
-    "expo-status-bar": "~2.0.0",
     "expo-secure-store": "~14.0.0",
+    "expo-status-bar": "~2.0.0",
     "react": "18.3.1",
     "react-native": "0.77.3",
     "react-native-safe-area-context": "~5.4.0",
-    "react-native-screens": "~4.10.0",
-    "@tanstack/react-query": "^5.75.0"
+    "react-native-screens": "~4.10.0"
   },
   "devDependencies": {
     "@types/react": "~18.3.12",

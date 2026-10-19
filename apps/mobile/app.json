@@ -15,11 +15,15 @@
       "bundleIdentifier": "com.unmute.app",
       "entitlements": {
         "com.apple.security.application-groups": ["group.com.unmute.app"]
+      },
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "UNMUTE uses the microphone to capture a voice note for your inbox."
       }
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-av",
       "./plugins/withShareExtension"
     ]
   }
