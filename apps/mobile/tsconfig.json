@@ -15,5 +15,6 @@
       "@unmute/api-client": ["../../packages/api-client/src"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "declarations.d.ts", "app/**/*.ts", "app/**/*.tsx"]
+  "include": ["**/*.ts", "**/*.tsx", "declarations.d.ts", "app/**/*.ts", "app/**/*.tsx"],
+  "exclude": ["**/*.test.ts"]
 }
