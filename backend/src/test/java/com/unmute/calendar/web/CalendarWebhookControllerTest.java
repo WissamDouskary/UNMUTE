@@ -85,6 +85,16 @@ class CalendarWebhookControllerTest {
     }
 
     @Test
+    @DisplayName("A second identical exists notification pulls again")
+    void duplicateExists() throws Exception {
+        send("secret", "exists");
+        send("secret", "exists");
+        assertEquals(2, google.lists);
+        assertEquals(2, events.applied);
+        assertEquals(2, live.publishes);
+    }
+
+    @Test
     @DisplayName("A 410 clears the sync token and lists the window once more")
     void expiredSyncToken() throws Exception {
         google.expireOnce = true;

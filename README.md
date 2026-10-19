@@ -117,6 +117,8 @@ npm run test -w apps/web    # Vitest
 npm run build:web
 ```
 
+In-process baselines for briefing rank, inbox classification, and graph preparation are in [docs/performance/2026-10-19-baseline.md](docs/performance/2026-10-19-baseline.md). Calendar conflict cases that still need a Google account are in [docs/calendar-sync.md](docs/calendar-sync.md).
+
 Login, registration, token refresh, AI calls, chat messages, and file uploads are limited per process. A caller who exceeds the limit receives `429` and `Retry-After`. Authenticated AI and upload limits follow the user id. Login limits follow the client address. The counts are not shared across backend replicas and reset on restart. Change them with `RATE_LIMIT_AUTH_CAPACITY`, `RATE_LIMIT_AI_CAPACITY`, and `RATE_LIMIT_UPLOAD_CAPACITY`.
 
 ### Database backup
