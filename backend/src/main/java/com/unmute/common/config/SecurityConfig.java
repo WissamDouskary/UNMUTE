@@ -1,7 +1,10 @@
 package com.unmute.common.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unmute.auth.security.JwtAuthenticationEntryPoint;
 import com.unmute.auth.security.JwtAuthenticationFilter;
+import com.unmute.common.ratelimit.RateLimitFilter;
+import com.unmute.common.ratelimit.RequestRateLimiter;
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,7 +34,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, RequestRateLimiter rateLimiter, ObjectMapper objectMapper) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
@@ -49,7 +52,8 @@ public class SecurityConfig {
                 ).permitAll()
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(new RateLimitFilter(rateLimiter, objectMapper), JwtAuthenticationFilter.class);
 
         return http.build();
     }

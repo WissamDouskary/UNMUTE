@@ -117,6 +117,19 @@ npm run test -w apps/web    # Vitest
 npm run build:web
 ```
 
+Login, registration, token refresh, AI calls, chat messages, and file uploads are limited per process. A caller who exceeds the limit receives `429` and `Retry-After`. Authenticated AI and upload limits follow the user id. Login limits follow the client address. The counts are not shared across backend replicas and reset on restart. Change them with `RATE_LIMIT_AUTH_CAPACITY`, `RATE_LIMIT_AI_CAPACITY`, and `RATE_LIMIT_UPLOAD_CAPACITY`.
+
+### Database backup
+
+Backups run inside the Compose database container, so they do not use whatever is listening on the host's port 5432. Dump files go in `backups/`, which is gitignored.
+
+```powershell
+.\scripts\db\backup.ps1
+.\scripts\db\restore.ps1 -Confirm -DumpFile backups\unmute-YYYYMMDD-HHMMSS.dump -Database unmute_it -ComposeFile docker-compose.it.yml -ProjectName unmute-it -Service db-it -DbUser unmute_it -VerifySql "SELECT 1"
+```
+
+Restore refuses `docker-compose.yml` and refuses the application database name. It only accepts `unmute_it`, `unmute_restore`, or a name ending in `_restore`, and only after `-Confirm`. Start the disposable database first with `docker compose -p unmute-it -f docker-compose.it.yml up -d --wait`.
+
 ### Mobile (on host, requires macOS for iOS Simulator)
 
 ```bash

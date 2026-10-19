@@ -69,6 +69,20 @@ unmute:
     worker-enabled: ${JOBS_WORKER_ENABLED:true}
     concurrency: ${JOBS_CONCURRENCY:4}
 
+  # Per-process token buckets. A restart clears them. Keys are a user id or a client address, never a body or token.
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    max-keys: ${RATE_LIMIT_MAX_KEYS:10000}
+    auth:
+      capacity: ${RATE_LIMIT_AUTH_CAPACITY:10}
+      window: ${RATE_LIMIT_AUTH_WINDOW:PT1M}
+    ai:
+      capacity: ${RATE_LIMIT_AI_CAPACITY:20}
+      window: ${RATE_LIMIT_AI_WINDOW:PT1M}
+    upload:
+      capacity: ${RATE_LIMIT_UPLOAD_CAPACITY:30}
+      window: ${RATE_LIMIT_UPLOAD_WINDOW:PT1M}
+
   # Keys are read from the environment only (.env via docker compose) and are never logged.
   # "auto" uses a real provider whenever its key is set and falls back to offline mocks otherwise.
   ai:

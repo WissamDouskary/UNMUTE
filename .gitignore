@@ -38,6 +38,7 @@ desktop.ini
 
 # === Docker ===
 docker-compose.override.yml
+backups/
 
 # === Expo / React Native ===
 apps/mobile/.expo/

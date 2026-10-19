@@ -17,6 +17,14 @@ spring:
     enabled: false
 
 unmute:
+  rate-limit:
+    # High enough that the rest of the suite does not trip the limiter. RateLimitIntegrationTest lowers it.
+    auth:
+      capacity: 1000
+    ai:
+      capacity: 1000
+    upload:
+      capacity: 1000
   jobs:
     # Tests run due jobs deterministically with JobWorker#drain.
     worker-enabled: false
